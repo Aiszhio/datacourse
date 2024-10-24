@@ -118,12 +118,10 @@ var Equipments = []Equipment{
 	{EquipmentID: 10, Brand: "Hasselblad", Model: "X1D II 50C"},
 }
 
-var ServiceRequirements = []ServiceRequirement{
+var ServiceRequirements = []ServiceRequirement{ //сделать возможность тратить сразу 2 ресурса на услугу или вообще без
 	{ServiceID: 1, EquipmentID: 1}, // Аренда студии -> Canon EOS 5D Mark IV
 	{ServiceID: 1, EquipmentID: 2}, // Аренда студии -> Nikon D850
 	{ServiceID: 2, EquipmentID: 7}, // Печать фотографий -> Epson SureColor P800
-	{ServiceID: 3, EquipmentID: 9}, // Создание фотокниги -> Wacom Cintiq 22
-	{ServiceID: 4, EquipmentID: 8}, // Создание фотоальбома -> Canon PIXMA Pro-100
 	{ServiceID: 5, EquipmentID: 7}, // Печать на холсте -> Epson SureColor P800
 	{ServiceID: 6, EquipmentID: 9}, // Цифровая обработка -> Wacom Cintiq 22
 	{ServiceID: 7, EquipmentID: 1}, // Портретная съемка -> Canon EOS 5D Mark IV
@@ -555,16 +553,26 @@ var MaterialExpenditures = []MaterialExpenditure{
 }
 
 var MaterialPurchases = []MaterialPurchase{
-	{PurchaseID: 1, MaterialID: 1, Cost: 200.00, Supplier: "Artistry Supplies Co.", Quantity: 100, SupplyDate: time.Date(2025, 4, 20, 0, 0, 0, 0, time.UTC)},
-	{PurchaseID: 2, MaterialID: 2, Cost: 150.00, Supplier: "Elysium Materials", Quantity: 80, SupplyDate: time.Date(2025, 4, 21, 0, 0, 0, 0, time.UTC)},
-	{PurchaseID: 3, MaterialID: 3, Cost: 250.00, Supplier: "Celestial Creations", Quantity: 60, SupplyDate: time.Date(2025, 4, 22, 0, 0, 0, 0, time.UTC)},
-	{PurchaseID: 4, MaterialID: 4, Cost: 300.00, Supplier: "Harmony Crafts", Quantity: 50, SupplyDate: time.Date(2025, 4, 23, 0, 0, 0, 0, time.UTC)},
-	{PurchaseID: 5, MaterialID: 5, Cost: 180.00, Supplier: "Majestic Supplies", Quantity: 70, SupplyDate: time.Date(2025, 4, 24, 0, 0, 0, 0, time.UTC)},
-	{PurchaseID: 6, MaterialID: 6, Cost: 220.00, Supplier: "Radiant Resources", Quantity: 40, SupplyDate: time.Date(2025, 4, 25, 0, 0, 0, 0, time.UTC)},
-	{PurchaseID: 7, MaterialID: 7, Cost: 130.00, Supplier: "Serenity Goods", Quantity: 90, SupplyDate: time.Date(2025, 4, 26, 0, 0, 0, 0, time.UTC)},
-	{PurchaseID: 8, MaterialID: 8, Cost: 160.00, Supplier: "Noble Art Supplies", Quantity: 30, SupplyDate: time.Date(2025, 4, 27, 0, 0, 0, 0, time.UTC)},
-	{PurchaseID: 9, MaterialID: 9, Cost: 210.00, Supplier: "Evergreen Materials", Quantity: 20, SupplyDate: time.Date(2025, 4, 28, 0, 0, 0, 0, time.UTC)},
-	{PurchaseID: 10, MaterialID: 10, Cost: 190.00, Supplier: "Luminous Supplies", Quantity: 25, SupplyDate: time.Date(2025, 4, 29, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 1, MaterialID: 1, Cost: 200.00, Supplier: "Artistry Supplies Co.", Quantity: 100, SupplyDate: time.Date(2024, 10, 23, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 2, MaterialID: 2, Cost: 150.00, Supplier: "Elysium Materials", Quantity: 80, SupplyDate: time.Date(2024, 10, 24, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 3, MaterialID: 3, Cost: 250.00, Supplier: "Celestial Creations", Quantity: 60, SupplyDate: time.Date(2024, 10, 25, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 4, MaterialID: 4, Cost: 300.00, Supplier: "Harmony Crafts", Quantity: 50, SupplyDate: time.Date(2024, 10, 26, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 5, MaterialID: 5, Cost: 180.00, Supplier: "Majestic Supplies", Quantity: 70, SupplyDate: time.Date(2024, 10, 27, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 6, MaterialID: 6, Cost: 220.00, Supplier: "Radiant Resources", Quantity: 40, SupplyDate: time.Date(2024, 10, 28, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 7, MaterialID: 7, Cost: 130.00, Supplier: "Serenity Goods", Quantity: 90, SupplyDate: time.Date(2024, 10, 29, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 8, MaterialID: 8, Cost: 160.00, Supplier: "Noble Art Supplies", Quantity: 30, SupplyDate: time.Date(2024, 10, 30, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 9, MaterialID: 9, Cost: 210.00, Supplier: "Evergreen Materials", Quantity: 20, SupplyDate: time.Date(2024, 10, 31, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 10, MaterialID: 10, Cost: 190.00, Supplier: "Luminous Supplies", Quantity: 25, SupplyDate: time.Date(2024, 11, 1, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 11, MaterialID: 11, Cost: 240.00, Supplier: "Bright Horizon Supplies", Quantity: 35, SupplyDate: time.Date(2024, 11, 2, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 12, MaterialID: 12, Cost: 170.00, Supplier: "Harmony Craftworks", Quantity: 60, SupplyDate: time.Date(2024, 11, 3, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 13, MaterialID: 13, Cost: 280.00, Supplier: "Majestic Materials", Quantity: 45, SupplyDate: time.Date(2024, 11, 4, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 14, MaterialID: 14, Cost: 220.00, Supplier: "Radiant Creations", Quantity: 55, SupplyDate: time.Date(2024, 11, 5, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 15, MaterialID: 15, Cost: 300.00, Supplier: "Creative Supplies Inc.", Quantity: 20, SupplyDate: time.Date(2024, 11, 6, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 16, MaterialID: 16, Cost: 250.00, Supplier: "Elysium Craftworks", Quantity: 80, SupplyDate: time.Date(2024, 11, 7, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 17, MaterialID: 17, Cost: 270.00, Supplier: "Artistry Haven", Quantity: 70, SupplyDate: time.Date(2024, 11, 8, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 18, MaterialID: 18, Cost: 210.00, Supplier: "Celestial Supplies", Quantity: 40, SupplyDate: time.Date(2024, 11, 9, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 19, MaterialID: 19, Cost: 190.00, Supplier: "Noble Goods", Quantity: 65, SupplyDate: time.Date(2024, 11, 10, 0, 0, 0, 0, time.UTC)},
+	{PurchaseID: 20, MaterialID: 20, Cost: 180.00, Supplier: "Serenity Supplies", Quantity: 90, SupplyDate: time.Date(2024, 11, 11, 0, 0, 0, 0, time.UTC)},
 }
 
 var OrderContents = []OrderContent{
