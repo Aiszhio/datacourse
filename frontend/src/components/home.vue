@@ -12,10 +12,6 @@ export default {
       <input type="password" v-model="password" placeholder="Пароль" required />
       <button type="submit" class="btn">Войти</button>
     </form>
-    <div class="links">
-      <a href="#">Забыли пароль?</a><br />
-      <a href="#">Создать аккаунт</a>
-    </div>
   </div>
 </template>
 
@@ -27,66 +23,58 @@ body {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-image: url('@/assets/studio-bg.jpg'); /* Фоновое изображение */
   background-size: cover;
+  background-position: center;
   font-family: 'Arial', sans-serif;
 }
 
 .login-container {
-  background: rgba(255, 255, 255, 0.9);
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
-  width: 320px;
-  height: 40%;
+  background: rgba(255, 255, 255, 0.85); /* Чуть более прозрачный белый фон для мягкого эффекта */
+  padding: 40px 30px;
+  border-radius: 15px;
+  box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.3); /* Мягкая тень для улучшенного визуального эффекта */
+  width: 360px;
   text-align: center;
 }
 
 h2 {
-  margin-bottom: 20px;
+  margin-bottom: 30px;
   color: #333;
+  font-size: 1.8em;
+  font-weight: bold;
 }
 
 input {
   width: 90%;
-  padding: 10px;
-  margin: 10px 0;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  padding: 15px;
+  margin: 15px 0;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  font-size: 1em;
+  transition: border-color 0.3s;
+}
+
+input:focus {
+  border-color: #ff6b6b;
 }
 
 .btn {
   background-color: #ff6b6b;
   color: white;
   border: none;
-  padding: 10px;
-  border-radius: 5px;
+  padding: 15px;
+  border-radius: 8px;
   cursor: pointer;
+  font-size: 1.1em;
   width: 100%;
+  transition: background-color 0.3s;
 }
 
 .btn:hover {
   background-color: #ff4d4d;
 }
 
-.logo {
-  margin-bottom: 20px;
-}
-
 .logo img {
   max-width: 150px;
-}
-
-.links {
-  margin-top: 20px;
-}
-
-.links a {
-  color: #555;
-  text-decoration: none;
-}
-
-.links a:hover {
-  text-decoration: underline;
 }
 </style>
