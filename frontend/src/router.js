@@ -5,7 +5,10 @@ import Payment from './components/payment.vue';
 import ClientOrders from "./components/client_orders.vue";
 import WorkerOrders from "./components/worker_orders.vue";
 import Worker from './components/worker_dashboard.vue';
-import Admin from './components/admin_home.vue'
+import AdminDashboard from './components/admin_home.vue';
+import ManageEmployees from './components/manage_employees.vue';
+import Order_history from "./components/order_history.vue";
+import MaterialsOverview from './components/manage_materials.vue';
 
 const routes = [
     { path: '/', name: 'home', component: home }, // Главная страница
@@ -14,7 +17,10 @@ const routes = [
     { path: '/client/payment', name: 'Payment', component: Payment }, // Оплата счетов клиента
     { path: '/worker', name: 'WorkerDashboard', component: Worker }, // Панель сотрудника
     { path: '/worker/orders', name: 'WorkerOrders', component: WorkerOrders }, // Заказы сотрудника
-    { path: '/admin', name: 'AdminHome', component: Admin }
+    { path: '/admin', name: 'AdminHome', component: AdminDashboard },
+    { path: '/admin/manage_employee', name: 'ManageEmp', component: ManageEmployees },
+    { path: '/admin/orders', name: 'OrderHistory', component: Order_history },
+    { path: '/admin/MaterialsOverview', name: 'MaterialsOverview', component: MaterialsOverview }
 ];
 
 const router = createRouter({

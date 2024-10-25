@@ -1,127 +1,152 @@
+<template>
+  <div class="admin-dashboard">
+    <h2>Панель администратора</h2>
+
+    <!-- Раздел со списком сотрудников -->
+    <div class="section">
+      <h3>Список сотрудников</h3>
+      <table>
+        <thead>
+        <tr>
+          <th>ID</th>
+          <th>Имя</th>
+          <th>Должность</th>
+          <th>Дата найма</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="employee in displayedEmployees" :key="employee.id">
+          <td>{{ employee.id }}</td>
+          <td>{{ employee.name }}</td>
+          <td>{{ employee.position }}</td>
+          <td>{{ formatDate(employee.hireDate) }}</td>
+        </tr>
+        </tbody>
+      </table>
+      <button @click="goToEmployeesPage" class="btn">Управление сотрудниками</button>
+    </div>
+
+    <!-- Раздел с историей заказов -->
+    <div class="section">
+      <h3>История заказов</h3>
+      <table>
+        <thead>
+        <tr>
+          <th>ID Заказа</th>
+          <th>Клиент</th>
+          <th>Услуга</th>
+          <th>Дата заказа</th>
+          <th>Статус</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="order in displayedOrders" :key="order.id">
+          <td>{{ order.id }}</td>
+          <td>{{ order.client }}</td>
+          <td>{{ order.service }}</td>
+          <td>{{ formatDate(order.orderDate) }}</td>
+          <td>{{ order.status }}</td>
+        </tr>
+        </tbody>
+      </table>
+      <button @click="goToOrdersPage" class="btn">История заказов</button>
+    </div>
+
+    <!-- Раздел с историей закупок -->
+    <div class="section">
+      <h3>История закупок</h3>
+      <table>
+        <thead>
+        <tr>
+          <th>ID Закупки</th>
+          <th>Материал</th>
+          <th>Поставщик</th>
+          <th>Количество</th>
+          <th>Стоимость</th>
+          <th>Дата закупки</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="purchase in displayedPurchases" :key="purchase.id">
+          <td>{{ purchase.id }}</td>
+          <td>{{ purchase.material }}</td>
+          <td>{{ purchase.supplier }}</td>
+          <td>{{ purchase.quantity }}</td>
+          <td>{{ purchase.cost }}</td>
+          <td>{{ formatDate(purchase.date) }}</td>
+        </tr>
+        </tbody>
+      </table>
+      <button @click="goToMaterialsPage" class="btn">Просмотр закупок и расходов материалов</button>
+    </div>
+  </div>
+</template>
+
 <script>
 export default {
-  name: 'admin',
+  name: 'AdminDashboard',
   data() {
     return {
-      newItem: '', // Новая запись
-      filterText: '', // Текст для фильтрации данных
-      data: [ // Примерные данные
-        { id: 1, name: 'Фотосессия' },
-        { id: 2, name: 'Фотоальбом' }
+      employees: [
+        { id: 1, name: 'Иван Иванов', position: 'Фотограф', hireDate: '2023-01-15' },
+        { id: 2, name: 'Анна Петрова', position: 'Редактор', hireDate: '2022-05-20' },
+        // Дополнительные записи
       ],
+      orders: [
+        { id: 101, client: 'Мария Сидорова', service: 'Фотосессия', orderDate: '2024-08-15', status: 'Выполнен' },
+        { id: 102, client: 'Петр Иванов', service: 'Фотоальбом', orderDate: '2024-09-01', status: 'В процессе' },
+        // Дополнительные записи
+      ],
+      purchases: [
+        { id: 301, material: 'Фотобумага', supplier: 'Art Supplies Inc.', quantity: 100, cost: 1500, date: '2024-08-01' },
+        { id: 302, material: 'Картридж для принтера', supplier: 'Print Solutions Ltd.', quantity: 50, cost: 5000, date: '2024-08-05' },
+        // Дополнительные записи
+      ]
     };
   },
   computed: {
-    filteredData() {
-      return this.data.filter(item => item.name.toLowerCase().includes(this.filterText.toLowerCase()));
+    displayedEmployees() {
+      return this.employees.slice(0, 5); // Показываем только первых 5 сотрудников
+    },
+    displayedOrders() {
+      return this.orders.slice(0, 5); // Показываем только первые 5 заказов
+    },
+    displayedPurchases() {
+      return this.purchases.slice(0, 5); // Показываем только первые 5 закупок
     }
   },
   methods: {
-    addData() {
-      if (this.newItem) {
-        const newItemObj = {
-          id: this.data.length + 1, // Генерация нового ID
-          name: this.newItem
-        };
-        this.data.push(newItemObj);
-        this.newItem = ''; // Очищаем поле ввода
-      }
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
     },
-    deleteItem(id) {
-      this.data = this.data.filter(item => item.id !== id);
+    goToEmployeesPage() {
+      this.$router.push({ name: 'ManageEmp' });
     },
-    editItem(item) {
-      // Логика для редактирования элемента
-      alert(`Редактирование элемента: ${item.name}`);
+    goToOrdersPage() {
+      this.$router.push({ name: 'OrderHistory' });
+    },
+    goToMaterialsPage() {
+      this.$router.push({ name: 'MaterialsOverview' });
     }
   }
 };
 </script>
 
-<template>
-  <div class="admin-dashboard">
-    <h2>Панель администратора</h2>
-
-    <!-- Форма для добавления данных -->
-    <div class="add-section">
-      <h3>Добавить новый элемент</h3>
-      <form @submit.prevent="addData">
-        <input type="text" v-model="newItem" placeholder="Введите название" required />
-        <button type="submit" class="btn">Добавить</button>
-      </form>
-    </div>
-
-    <!-- Фильтр для поиска -->
-    <div class="filter-section">
-      <h3>Фильтр данных</h3>
-      <input type="text" v-model="filterText" placeholder="Введите текст для поиска" />
-    </div>
-
-    <!-- Таблица данных -->
-    <div class="table-section">
-      <h3>Данные</h3>
-      <table>
-        <thead>
-        <tr>
-          <th>ID</th>
-          <th>Название</th>
-          <th>Действия</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="item in filteredData" :key="item.id">
-          <td>{{ item.id }}</td>
-          <td>{{ item.name }}</td>
-          <td>
-            <button @click="editItem(item)" class="btn">Редактировать</button>
-            <button @click="deleteItem(item.id)" class="btn delete-btn">Удалить</button>
-          </td>
-        </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</template>
-
 <style scoped>
-.admin-dashboard {
-  padding: 20px;
-  margin: 0 auto;
-  max-width: 900px;
-}
-
-.add-section,
-.filter-section,
-.table-section {
+.section {
   margin-bottom: 20px;
-  background-color: #f9f9f9;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-h2 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-input {
-  padding: 10px;
-  margin: 10px 0;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  width: 100%;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 table th,
 table td {
-  padding: 12px;
+  padding: 8px;
   border: 1px solid #ddd;
   text-align: left;
 }
@@ -129,21 +154,15 @@ table td {
 .btn {
   background-color: #4CAF50;
   color: white;
-  padding: 10px;
+  padding: 8px 12px;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   cursor: pointer;
-}
-
-.delete-btn {
-  background-color: #e74c3c;
+  transition: background-color 0.3s;
+  margin: 10px;
 }
 
 .btn:hover {
   background-color: #45a049;
-}
-
-.delete-btn:hover {
-  background-color: #c0392b;
 }
 </style>
