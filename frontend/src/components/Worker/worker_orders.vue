@@ -4,7 +4,9 @@ export default {
   data() {
     return {
       orders: [],  // Список доступных заказов для фотографа
-      loading: false  // Флаг для индикации загрузки
+      loading: false,  // Флаг для индикации загрузки
+      sortKey: '',  // Ключ для сортировки
+      sortOrder: 1  // Порядок сортировки: 1 для возрастания, -1 для убывания
     };
   },
   mounted() {
@@ -37,15 +39,38 @@ export default {
     },
     selectOrder(order) {
       alert(`Заказ #${order.OrderID} выбран для выполнения.`);
-      // Здесь можно добавить логику для закрепления заказа за фотографом
+      // Логика для закрепления заказа за фотографом
     },
     formatDate(dateString) {
       const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', {year: 'numeric', month: 'long', day: 'numeric'});
+      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
     },
     goToHome() {
-      this.$router.push({name: 'WorkerDashboard'});
+      this.$router.push({ name: 'WorkerDashboard' });
     },
+    sortBy(key) {
+      // Если уже сортируем по этому ключу, меняем порядок
+      if (this.sortKey === key) {
+        this.sortOrder *= -1;
+      } else {
+        this.sortKey = key;
+        this.sortOrder = 1;
+      }
+
+      this.orders.sort((a, b) => {
+        let valueA = a[key];
+        let valueB = b[key];
+
+        if (typeof valueA === 'string') {
+          valueA = valueA.toLowerCase();
+          valueB = valueB.toLowerCase();
+        }
+
+        if (valueA < valueB) return -1 * this.sortOrder;
+        if (valueA > valueB) return 1 * this.sortOrder;
+        return 0;
+      });
+    }
   }
 };
 </script>
@@ -54,18 +79,37 @@ export default {
   <div class="photographer-orders-container">
     <h2> История заказов </h2>
     <div v-if="loading" class="loading">Загрузка доступных заказов...</div>
+
     <div v-else>
-      <div v-if="orders.length > 0" class="orders-list">
-        <div class="order" v-for="order in orders" :key="order.OrderID">
-          <h3>Заказ #{{ order.OrderID }}</h3>
-          <p><strong>Клиент:</strong> {{ order.ClientName }}</p>
-          <p><strong>Услуга:</strong> {{ order.ServiceName }}</p>
-          <p><strong>Дата заказа:</strong> {{ formatDate(order.OrderDate) }}</p>
-          <p><strong>Дата выдачи:</strong> {{ formatDate(order.ReceiptDate) }}</p>
-          <button @click="selectOrder(order)" class="btn">Выбрать заказ</button>
-        </div>
+      <!-- Кнопки для сортировки -->
+      <div class="sort-buttons">
+        <button @click="sortBy('OrderID')" class="btn">Сортировать по ID заказа</button>
+        <button @click="sortBy('ClientName')" class="btn">Сортировать по клиенту</button>
+        <button @click="sortBy('ServiceName')" class="btn">Сортировать по услуге</button>
+        <button @click="sortBy('OrderDate')" class="btn">Сортировать по дате заказа</button>
       </div>
-      <div v-else class="no-orders">Нет доступных заказов.</div>
+
+      <!-- Таблица заказов -->
+      <table class="orders-table">
+        <thead>
+        <tr>
+          <th>ID Заказа</th>
+          <th>Клиент</th>
+          <th>Услуга</th>
+          <th>Дата заказа</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="order in orders" :key="order.OrderID">
+          <td>{{ order.OrderID }}</td>
+          <td>{{ order.ClientName }}</td>
+          <td>{{ order.ServiceName }}</td>
+          <td>{{ formatDate(order.OrderDate) }}</td>
+          <td>{{ formatDate(order.ReceiptDate) }}</td>
+          <td><button @click="selectOrder(order)" class="btn">Выбрать заказ</button></td>
+        </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Кнопки для перемещения по сайту -->
@@ -81,7 +125,7 @@ export default {
   padding: 20px;
   margin: 20px auto;
   width: 100%;
-  max-width: 700px;
+  max-width: 900px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   border-radius: 10px;
   text-align: left;
@@ -93,27 +137,27 @@ h2 {
   margin-bottom: 20px;
 }
 
-.orders-list {
+.sort-buttons {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 20px;
 }
 
-.order {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.order h3 {
-  margin-bottom: 10px;
-  color: #4CAF50;
+.orders-table th,
+.orders-table td {
+  padding: 12px;
+  border: 1px solid #ddd;
+  text-align: left;
 }
 
-.order p {
-  margin: 5px 0;
-  color: #555;
+.orders-table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
 }
 
 .loading {
@@ -131,13 +175,12 @@ h2 {
 .btn {
   background-color: #4CAF50;
   color: white;
-  padding: 12px;
+  padding: 10px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
   font-size: 1em;
   transition: background-color 0.3s ease;
-  text-align: center;
 }
 
 .btn:hover {
@@ -148,9 +191,5 @@ h2 {
   display: flex;
   justify-content: space-around;
   margin-top: 20px;
-}
-
-.navigation-buttons .btn {
-  width: 150px;
 }
 </style>

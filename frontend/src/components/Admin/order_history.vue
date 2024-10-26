@@ -147,9 +147,18 @@ export default {
 
 <style scoped>
 .order-history {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Это раздвигает заголовок, контент и кнопки */
   padding: 20px;
   margin: 0 auto;
   max-width: 900px;
+  height: 100vh; /* Используем 100vh для полной высоты */
+}
+
+.order-history .content {
+  flex-grow: 1; /* Контент будет занимать все доступное пространство */
+  overflow-y: auto; /* Если контент превышает высоту, включаем прокрутку */
 }
 
 h2 {
@@ -252,8 +261,10 @@ select {
 
 .navigation-buttons {
   display: flex;
-  justify-content: space-around;
+  flex-direction: row;
+  justify-content: space-between;
   margin-top: 20px;
+  padding-bottom: 20px; /* Добавляем отступ снизу для красоты */
 }
 
 .btn {

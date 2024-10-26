@@ -58,7 +58,13 @@ export default {
     },
     formatDate(dateString) {
       const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+      return date.toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     },
     goToOrders() {
       this.$router.push({ name: 'ClientOrders' }); // Переход на страницу заказов
@@ -75,39 +81,61 @@ export default {
     <h2>Оплата счетов</h2>
 
     <!-- Список неоплаченных счетов -->
-    <div class="invoices-section">
+    <div class="invoices-section section">
       <h3>Ваши неоплаченные счета</h3>
       <div v-if="loading" class="loading">Загрузка ваших счетов...</div>
-      <div v-else>
-        <div v-if="invoices.some(invoice => invoice.Status === 'Неоплачен')" class="invoices-list">
-          <div class="invoice" v-for="invoice in invoices.filter(invoice => invoice.Status === 'Неоплачен')" :key="invoice.InvoiceID">
-            <h4>Счет #{{ invoice.InvoiceID }}</h4>
-            <p><strong>Услуга:</strong> {{ invoice.ServiceName }}</p>
-            <p><strong>Сумма:</strong> {{ invoice.Amount }} руб.</p>
-            <p><strong>Дата создания:</strong> {{ formatDate(invoice.InvoiceDate) }}</p>
-            <button @click="payInvoice(invoice.InvoiceID)" class="btn">Оплатить</button>
-          </div>
-        </div>
-        <div v-else class="no-invoices">У вас нет неоплаченных счетов.</div>
-      </div>
+      <table class="invoices-table" v-if="!loading">
+        <thead>
+        <tr>
+          <th>ID Счета</th>
+          <th>Услуга</th>
+          <th>Сумма</th>
+          <th>Дата создания</th>
+          <th>Оплата</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="invoice in invoices.filter(invoice => invoice.Status === 'Неоплачен')" :key="invoice.InvoiceID">
+          <td>{{ invoice.InvoiceID }}</td>
+          <td>{{ invoice.ServiceName }}</td>
+          <td>{{ invoice.Amount }} руб.</td>
+          <td>{{ formatDate(invoice.InvoiceDate) }}</td>
+          <td><button @click="payInvoice(invoice.InvoiceID)" class="btn">Оплатить</button></td>
+        </tr>
+        <tr v-if="invoices.filter(invoice => invoice.Status === 'Неоплачен').length === 0">
+          <td colspan="5" class="no-invoices">У вас нет неоплаченных счетов.</td>
+        </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- Список оплаченных счетов (история) -->
-    <div class="invoices-section">
+    <!-- История оплаченных счетов -->
+    <div class="invoices-section section">
       <h3>История оплаченных счетов</h3>
       <div v-if="loading" class="loading">Загрузка ваших счетов...</div>
-      <div v-else>
-        <div v-if="invoices.some(invoice => invoice.Status === 'Оплачен')" class="invoices-list">
-          <div class="invoice" v-for="invoice in invoices.filter(invoice => invoice.Status === 'Оплачен')" :key="invoice.InvoiceID">
-            <h4>Счет #{{ invoice.InvoiceID }}</h4>
-            <p><strong>Услуга:</strong> {{ invoice.ServiceName }}</p>
-            <p><strong>Сумма:</strong> {{ invoice.Amount }} руб.</p>
-            <p><strong>Дата создания:</strong> {{ formatDate(invoice.InvoiceDate) }}</p>
-            <p><strong>Дата оплаты:</strong> {{ formatDate(invoice.PaymentDate) }}</p> <!-- Дата оплаты -->
-          </div>
-        </div>
-        <div v-else class="no-invoices">У вас нет оплаченных счетов.</div>
-      </div>
+      <table class="invoices-table" v-if="!loading">
+        <thead>
+        <tr>
+          <th>ID Счета</th>
+          <th>Услуга</th>
+          <th>Сумма</th>
+          <th>Дата создания</th>
+          <th>Дата оплаты</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="invoice in invoices.filter(invoice => invoice.Status === 'Оплачен')" :key="invoice.InvoiceID">
+          <td>{{ invoice.InvoiceID }}</td>
+          <td>{{ invoice.ServiceName }}</td>
+          <td>{{ invoice.Amount }} руб.</td>
+          <td>{{ formatDate(invoice.InvoiceDate) }}</td>
+          <td>{{ formatDate(invoice.PaymentDate) }}</td>
+        </tr>
+        <tr v-if="invoices.filter(invoice => invoice.Status === 'Оплачен').length === 0">
+          <td colspan="5" class="no-invoices">У вас нет оплаченных счетов.</td>
+        </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Кнопки для навигации -->
@@ -133,22 +161,20 @@ export default {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.invoices-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.invoices-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
 }
 
-.invoice {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+.invoices-table th, .invoices-table td {
+  padding: 12px;
+  border: 1px solid #ddd;
+  text-align: left;
 }
 
-.invoice h4 {
-  margin-bottom: 10px;
-  color: #4CAF50;
+.invoices-table th {
+  background-color: #f2f2f2;
 }
 
 .loading {
@@ -166,14 +192,11 @@ export default {
 .btn {
   background-color: #4CAF50;
   color: white;
-  padding: 12px;
+  padding: 10px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 1em;
   transition: background-color 0.3s ease;
-  margin: 95px;
-  width: 30vh;
 }
 
 .btn:hover {
@@ -182,7 +205,7 @@ export default {
 
 .navigation-buttons {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   margin-top: 20px;
 }
 </style>

@@ -5,16 +5,21 @@ export default {
     return {
       userName: 'Имя Пользователя', // Можно получить из бэкенда или сессии
       orders: [], // Текущие заказы пользователя
-      loading: true // Флаг загрузки заказов
+      loading: true, // Флаг загрузки заказов
+      orderLimit: 3 // Ограничение на количество отображаемых заказов
     };
   },
   mounted() {
     this.fetchOrders(); // Загружаем заказы при загрузке страницы
   },
+  computed: {
+    limitedOrders() {
+      return this.orders.slice(0, this.orderLimit); // Ограничиваем количество заказов
+    }
+  },
   methods: {
     async fetchOrders() {
       try {
-        // Пример запроса для получения заказов пользователя
         const response = await fetch('http://localhost:8080/api/client/orders', {
           method: 'GET',
           headers: {
@@ -54,36 +59,49 @@ export default {
   <div class="user-dashboard">
     <h2>Панель пользователя</h2>
 
-    <!-- Приветственное сообщение -->
-    <div class="user-info">
-      <h3>Добро пожаловать, {{ userName }}!</h3>
-    </div>
+    <h3>Добро пожаловать, {{ userName }}!</h3>
 
     <!-- Список текущих заказов -->
-    <div class="orders-section">
+    <div class="orders-section section">
       <h3>Ваши заказы</h3>
       <div v-if="loading" class="loading">Загрузка ваших заказов...</div>
-      <div v-else>
-        <div v-if="orders.length > 0" class="orders-list">
-          <div class="order" v-for="order in orders" :key="order.OrderID">
-            <h4>Заказ #{{ order.OrderID }}</h4>
-            <p><strong>Услуга:</strong> {{ order.ServiceName }}</p>
-            <p><strong>Дата заказа:</strong> {{ formatDate(order.OrderDate) }}</p>
-            <p><strong>Дата получения:</strong> {{ formatDate(order.ReceiptDate) }}</p>
-            <p><strong>Текущий статус:</strong> {{ order.Status }}</p>
-          </div>
-        </div>
-        <div v-else class="no-orders">У вас нет текущих заказов.</div>
-      </div>
+
+      <!-- Таблица заказов всегда отображается -->
+      <table class="orders-table">
+        <thead>
+        <tr>
+          <th>ID Заказа</th>
+          <th>Услуга</th>
+          <th>Дата заказа</th>
+          <th>Дата получения</th>
+          <th>Текущий статус</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- Показать данные, если они загружены -->
+        <tr v-if="!loading && limitedOrders.length > 0" v-for="order in limitedOrders" :key="order.OrderID">
+          <td>{{ order.OrderID }}</td>
+          <td>{{ order.ServiceName }}</td>
+          <td>{{ formatDate(order.OrderDate) }}</td>
+          <td>{{ formatDate(order.ReceiptDate) }}</td>
+          <td>{{ order.Status }}</td>
+        </tr>
+        <!-- Показать пустую строку, если данных нет -->
+        <tr v-if="!loading && limitedOrders.length === 0">
+          <td colspan="5" class="no-orders">У вас нет текущих заказов.</td>
+        </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- Кнопки для навигации -->
     <div class="navigation-buttons">
-      <button @click="goToCreateOrder" class="btn">Создать заказ</button>
+      <button @click="goToCreateOrder" class="btn">Сделать заказ</button>
       <button @click="goToPayInvoices" class="btn">Оплатить счета</button>
     </div>
   </div>
 </template>
+
 
 <style scoped>
 .user-dashboard {
@@ -92,39 +110,29 @@ export default {
   max-width: 900px;
 }
 
-.user-info {
+.section {
   background-color: #f9f9f9;
-  padding: 20px;
-  margin-bottom: 20px;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.orders-section {
-  background-color: #f9f9f9;
   padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
 }
 
-.orders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
 }
 
-.order {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+.orders-table th,
+.orders-table td {
+  padding: 12px;
+  border: 1px solid #ddd;
+  text-align: left;
 }
 
-.order h4 {
-  margin-bottom: 10px;
-  color: #4CAF50;
+.orders-table th {
+  background-color: #f2f2f2;
 }
 
 .loading {
@@ -140,25 +148,24 @@ export default {
 }
 
 .btn {
-  background-color: #4CAF50;
-  color: white;
-  padding: 12px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
+  background-color: #4CAF50; /* Зеленый цвет фона */
+  color: white; /* Белый текст */
+  padding: 10px 20px; /* Внутренние отступы */
+  border: none; /* Убираем рамку */
+  border-radius: 5px; /* Скругляем углы */
+  cursor: pointer; /* Указатель мыши при наведении */
   font-size: 1em;
-  transition: background-color 0.3s ease;
-  margin: 95px;
-  width: 30vh;
+  transition: background-color 0.3s ease; /* Плавная смена цвета при наведении */
 }
 
 .btn:hover {
-  background-color: #45a049;
+  background-color: #4CAF50;
+  color: white;
 }
 
 .navigation-buttons {
   display: flex;
-  justify-content: space-around;
-  margin-top: 20px;
+  justify-content: space-between;
 }
+
 </style>

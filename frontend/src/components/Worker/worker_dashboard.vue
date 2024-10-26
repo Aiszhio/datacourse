@@ -4,18 +4,24 @@ export default {
   data() {
     return {
       workerName: 'Имя Сотрудника', // Имя сотрудника, можно получить из бэкенда
-      workerPosition: 'Фотограф', // Позиция сотрудника
       orders: [], // Заказы, назначенные сотруднику
-      loading: true // Флаг загрузки заказов
+      loading: true, // Флаг загрузки заказов
+      orderLimit: 3 // Количество отображаемых заказов
     };
   },
   mounted() {
     this.fetchOrders(); // Загружаем заказы при загрузке страницы
   },
+  computed: {
+    limitedOrders() {
+      // Ограничиваем количество заказов до трех
+      return this.orders.slice(0, this.orderLimit);
+    }
+  },
   methods: {
     async fetchOrders() {
       try {
-        // Пример запроса для получения заказов сотрудника
+        console.log("Начинается загрузка заказов...");
         const response = await fetch('http://localhost:8080/api/worker/orders', {
           method: 'GET',
           headers: {
@@ -30,8 +36,10 @@ export default {
 
         const data = await response.json();
         this.orders = data.map(order => ({ ...order, updatedStatus: order.Status }));
+        console.log("Загруженные заказы:", this.orders); // Вывод загруженных данных
+
       } catch (error) {
-        console.error('Ошибка:', error.message);
+        console.error('Ошибка при загрузке заказов:', error.message);
         alert('Не удалось загрузить заказы.');
       } finally {
         this.loading = false;
@@ -73,42 +81,48 @@ export default {
 <template>
   <div class="worker-dashboard">
     <h2>Панель сотрудника</h2>
-
-    <!-- Информация о сотруднике -->
-    <div class="worker-info">
-      <h3>Добро пожаловать, {{ workerName }}!</h3>
-      <p><strong>Ваша позиция:</strong> {{ workerPosition }}</p>
-    </div>
+    <h3>Добро пожаловать, {{ workerName }}!</h3>
 
     <!-- Список текущих заказов -->
     <div class="orders-section">
       <h3>Предстоящие заказы</h3>
       <div v-if="loading" class="loading">Загрузка заказов...</div>
-      <div v-else>
-        <div v-if="orders.length > 0" class="orders-list">
-          <div class="order" v-for="order in orders" :key="order.OrderID">
-            <h4>Заказ #{{ order.OrderID }}</h4>
-            <p><strong>Услуга:</strong> {{ order.ServiceName }}</p>
-            <p><strong>Дата заказа:</strong> {{ formatDate(order.OrderDate) }}</p>
-            <p><strong>Статус:</strong> {{ order.Status }}</p>
 
-            <!-- Обновление статуса заказа -->
-            <div class="status-update">
-              <label for="status">Обновить статус:</label>
-              <select v-model="order.updatedStatus" @change="updateOrderStatus(order)">
-                <option value="В процессе">В процессе</option>
-                <option value="Завершён">Завершён</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div v-else class="no-orders">У вас нет назначенных заказов.</div>
+      <!-- Таблица заказов (выводится всегда) -->
+      <table class="orders-table">
+        <thead>
+        <tr>
+          <th>ID Заказа</th>
+          <th>Услуга</th>
+          <th>Дата заказа</th>
+          <th>Статус</th>
+          <th>Обновить статус</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-if="!loading && limitedOrders.length > 0" v-for="order in limitedOrders" :key="order.OrderID">
+          <td>{{ order.OrderID }}</td>
+          <td>{{ order.ServiceName }}</td>
+          <td>{{ formatDate(order.OrderDate) }}</td>
+          <td>{{ order.Status }}</td>
+          <td>
+            <select v-model="order.updatedStatus" @change="updateOrderStatus(order)">
+              <option value="В процессе">В процессе</option>
+              <option value="Завершён">Завершён</option>
+            </select>
+          </td>
+        </tr>
+
+        <!-- Пустые строки для отображения таблицы даже без данных -->
+        <tr v-else>
+          <td colspan="5" class="no-orders">Нет доступных заказов</td>
+        </tr>
+        </tbody>
+      </table>
+      <!-- Кнопки для навигации -->
+      <div class="navigation-buttons">
+        <button @click="goToWorkerOrders" class="btn">Просмотреть все заказы</button>
       </div>
-    </div>
-
-    <!-- Кнопки для навигации -->
-    <div class="navigation-buttons">
-      <button @click="goToWorkerOrders" class="btn">Просмотреть заказы</button> <!-- Добавленная кнопка -->
     </div>
   </div>
 </template>
@@ -120,14 +134,6 @@ export default {
   max-width: 900px;
 }
 
-.worker-info {
-  background-color: #f9f9f9;
-  padding: 20px;
-  margin-bottom: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
 .orders-section {
   background-color: #f9f9f9;
   padding: 20px;
@@ -135,62 +141,51 @@ export default {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.orders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
 }
 
-.order {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+.orders-table th,
+.orders-table td {
+  padding: 12px;
+  border: 1px solid #ddd;
+  text-align: left;
 }
 
-.order h4 {
-  margin-bottom: 10px;
-  color: #4CAF50;
+.orders-table th {
+  background-color: #f2f2f2;
+}
+
+.no-orders {
+  text-align: center;
+  color: #999;
 }
 
 .status-update {
   margin-top: 15px;
 }
 
-select {
+.btn {
+  background-color: #4CAF50;
+  color: white;
   padding: 10px;
-  border: 1px solid #ccc;
+  border: none;
   border-radius: 5px;
+  cursor: pointer;
   font-size: 1em;
+  transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+  background-color: #45a049;
 }
 
 .loading {
   text-align: center;
   color: #555;
   font-size: 1.2em;
-}
-
-.no-orders {
-  text-align: center;
-  color: #999;
-  font-size: 1.2em;
-}
-
-.btn {
-  background-color: #4CAF50;
-  color: white;
-  padding: 12px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1em;
-  transition: background-color 0.3s ease;
-  margin: 50px;
-  width: 50vh;
-}
-
-.btn:hover {
-  background-color: #45a049;
 }
 
 .navigation-buttons {

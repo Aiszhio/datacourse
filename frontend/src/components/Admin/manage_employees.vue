@@ -148,6 +148,7 @@ export default {
   padding: 20px;
   margin: 0 auto;
   max-width: 900px;
+  max-height: 100vh;
 }
 
 h2 {

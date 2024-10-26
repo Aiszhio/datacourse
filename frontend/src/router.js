@@ -1,14 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import home from './components/home.vue';
-import User from './components/client_home.vue';
-import Payment from './components/payment.vue';
-import ClientOrders from "./components/client_orders.vue";
-import WorkerOrders from "./components/worker_orders.vue";
-import Worker from './components/worker_dashboard.vue';
-import AdminDashboard from './components/admin_home.vue';
-import ManageEmployees from './components/manage_employees.vue';
-import Order_history from "./components/order_history.vue";
-import MaterialsOverview from './components/manage_materials.vue';
+import User from './components/User/client_home.vue';
+import Payment from './components/User/payment.vue';
+import ClientOrders from "./components/User/client_orders.vue";
+import WorkerOrders from "./components/Worker/worker_orders.vue";
+import Worker from './components/Worker/worker_dashboard.vue';
+import AdminDashboard from './components/Admin/admin_home.vue';
+import ManageEmployees from './components/Admin/manage_employees.vue';
+import Order_history from "./components/Admin/order_history.vue";
+import MaterialsOverview from './components/Admin/manage_materials.vue';
 
 const routes = [
     { path: '/', name: 'home', component: home }, // Главная страница

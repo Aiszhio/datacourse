@@ -134,8 +134,16 @@ export default {
 </script>
 
 <style scoped>
+.admin-dashboard{
+  max-height: 100vh;
+}
+
 .section {
-  margin-bottom: 20px;
+  background-color: #f9f9f9; /* Светлый фон для контраста */
+  border-radius: 10px; /* Округление углов */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Тень для объема */
+  padding: 20px; /* Увеличенный padding для большего пространства */
+  margin-bottom: 20px; /* Отступ снизу */
 }
 
 table {
