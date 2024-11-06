@@ -1,6 +1,8 @@
 package db
 
-import "time"
+import (
+	"time"
+)
 
 type Client struct {
 	ClientID    int    `gorm:"column:client_id;primaryKey"`

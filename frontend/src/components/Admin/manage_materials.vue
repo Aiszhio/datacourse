@@ -2,60 +2,145 @@
   <div class="materials-overview">
     <h2>Управление материалами</h2>
 
-    <!-- Таблица закупок материалов с кнопками управления -->
-    <div class="purchases-section">
-      <h3>История закупок</h3>
-      <button @click="openAddPurchaseModal" class="btn">Добавить закупку</button>
-      <button @click="sortPurchases" class="btn">Сортировать</button>
-
+    <!-- Таблица списка материалов -->
+    <div class="materials-section">
+      <h3>Список материалов</h3>
       <table>
         <thead>
         <tr>
-          <th>ID Закупки</th>
-          <th>Материал</th>
-          <th>Поставщик</th>
+          <th>Номер материала</th>
+          <th>Название материала</th>
           <th>Количество</th>
-          <th>Стоимость</th>
-          <th>Дата закупки</th>
-          <th>Действия</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="purchase in purchases" :key="purchase.id">
-          <td>{{ purchase.id }}</td>
-          <td>{{ purchase.material }}</td>
-          <td>{{ purchase.supplier }}</td>
-          <td>{{ purchase.quantity }}</td>
-          <td>{{ purchase.cost }}</td>
-          <td>{{ formatDate(purchase.date) }}</td>
-          <td>
-            <button @click="openEditPurchaseModal(purchase)" class="btn">Редактировать</button>
-            <button @click="deletePurchase(purchase.id)" class="btn danger">Удалить</button>
-          </td>
+        <tr v-for="material in materials" :key="material.id">
+          <td>{{ material.id }}</td>
+          <td>{{ material.name }}</td>
+          <td>{{ material.quantity }}</td>
         </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Модальные окна для добавления и редактирования закупок -->
+    <!-- Таблица расхода материалов -->
+    <div class="expenditures-section">
+      <h3>Расход материалов</h3>
+      <button @click="openAddExpenditureModal" class="btn">Добавить расход</button>
+      <table>
+        <thead>
+        <tr>
+          <th>Номер расхода</th>
+          <th>Номер материала</th>
+          <th>Дата расхода</th>
+          <th>Количество расхода</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="expenditure in expenditures" :key="expenditure.id">
+          <td>{{ expenditure.id }}</td>
+          <td>{{ expenditure.materialId }}</td>
+          <td>{{ formatDate(expenditure.date) }}</td>
+          <td>{{ expenditure.quantity }}</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Таблица закупок материалов -->
+    <div class="purchases-section">
+      <h3>Закупка материалов</h3>
+      <button @click="openAddPurchaseModal" class="btn">Добавить закупку</button>
+      <table>
+        <thead>
+        <tr>
+          <th>Номер закупки</th>
+          <th>Номер материала</th>
+          <th>Стоимость</th>
+          <th>Поставщик</th>
+          <th>Количество</th>
+          <th>Дата поставки</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="purchase in purchases" :key="purchase.id">
+          <td>{{ purchase.id }}</td>
+          <td>{{ purchase.materialId }}</td>
+          <td>{{ purchase.cost }}</td>
+          <td>{{ purchase.supplier }}</td>
+          <td>{{ purchase.quantity }}</td>
+          <td>{{ formatDate(purchase.date) }}</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Модальное окно для добавления расхода материалов -->
+    <div v-if="showExpenditureModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Добавить расход материала</h3>
+
+        <label for="materialId">Номер материала</label>
+        <input id="materialId" v-model="currentExpenditure.materialId" class="input" placeholder="Номер материала" required />
+
+        <label for="date">Дата расхода</label>
+        <input id="date" type="date" v-model="currentExpenditure.date" class="input" required />
+
+        <label for="quantity">Количество расхода</label>
+        <input id="quantity" type="number" v-model="currentExpenditure.quantity" class="input" placeholder="Количество расхода" min="1" required />
+
+        <button @click="saveExpenditure" class="btn">Сохранить</button>
+        <button @click="closeExpenditureModal" class="btn danger">Отмена</button>
+      </div>
+    </div>
+
+    <!-- Модальное окно для добавления закупки материалов -->
     <div v-if="showPurchaseModal" class="modal-overlay">
       <div class="modal">
-        <h3>{{ editingPurchase ? "Редактировать закупку" : "Добавить закупку" }}</h3>
-        <input v-model="currentPurchase.material" class="input" placeholder="Материал" required />
-        <input v-model="currentPurchase.supplier" class="input" placeholder="Поставщик" required />
-        <input type="number" v-model="currentPurchase.quantity" class="input" placeholder="Количество" required />
-        <input type="number" v-model="currentPurchase.cost" class="input" placeholder="Стоимость" required />
-        <input type="date" v-model="currentPurchase.date" class="input" required />
+        <h3>Добавить закупку материала</h3>
+
+        <label for="materialId">Номер материала</label>
+        <input id="materialId" v-model="currentPurchase.materialId" class="input" placeholder="Номер материала" required />
+
+        <label for="supplier">Поставщик</label>
+        <input id="supplier" v-model="currentPurchase.supplier" class="input" placeholder="Поставщик" required />
+
+        <label for="quantity">Количество</label>
+        <input id="quantity" type="number" v-model="currentPurchase.quantity" class="input" placeholder="Количество" min="1" required />
+
+        <label for="cost">Стоимость</label>
+        <input id="cost" type="number" v-model="currentPurchase.cost" class="input" placeholder="Стоимость" min="0" required />
+
+        <label for="date">Дата поставки</label>
+        <input id="date" type="date" v-model="currentPurchase.date" class="input" required />
+
         <button @click="savePurchase" class="btn">Сохранить</button>
         <button @click="closePurchaseModal" class="btn danger">Отмена</button>
       </div>
     </div>
 
-    <!-- Кнопки навигации по другим страницам -->
-    <div class="navigation-buttons">
-      <button @click="goToAdminHome" class="btn">На главную администратора</button>
-      <button @click="goToEmployeesPage" class="btn">Управление сотрудниками</button>
-      <button @click="goToOrdersPage" class="btn">История заказов</button>
+    <!-- Панель навигации в стиле карточек -->
+    <div class="card-panel">
+      <div class="card" @click="goToAdminHome">
+        <h4>На главную</h4>
+        <p>Панель администратора</p>
+      </div>
+      <div class="card" @click="goToEmployeesPage">
+        <h4>Сотрудники</h4>
+        <p>Управление сотрудниками</p>
+      </div>
+      <div class="card" @click="goToOrdersPage">
+        <h4>Заказы</h4>
+        <p>История заказов</p>
+      </div>
+      <div class="card" @click="goToBookingsPage">
+        <h4>Бронирование</h4>
+        <p>Управление бронированиями</p>
+      </div>
+      <div class="card" @click="goToServicesPage">
+        <h4>Услуги</h4>
+        <p>Управление услугами</p>
+      </div>
     </div>
 
   </div>
@@ -66,61 +151,46 @@ export default {
   name: 'MaterialsOverview',
   data() {
     return {
-      purchases: [],
+      materials: [
+        { id: 1, name: 'Фотобумага', quantity: 100 },
+        { id: 2, name: 'Картридж для принтера', quantity: 50 }
+      ],
       expenditures: [],
-      showPurchaseModal: false,
+      purchases: [],
       showExpenditureModal: false,
-      editingPurchase: false,
-      editingExpenditure: false,
-      currentPurchase: {},
-      currentExpenditure: {}
+      showPurchaseModal: false,
+      currentExpenditure: {},
+      currentPurchase: {}
     };
   },
-  mounted() {
-    this.fetchPurchases();
-    this.fetchExpenditures();
-  },
   methods: {
-    async fetchPurchases() {
-      try {
-        const response = await fetch('http://localhost:8080/api/materials/purchases');
-        this.purchases = await response.json();
-      } catch (error) {
-        console.error('Ошибка при загрузке закупок:', error);
-      }
-    },
-    async fetchExpenditures() {
-      try {
-        const response = await fetch('http://localhost:8080/api/materials/expenditures');
-        this.expenditures = await response.json();
-      } catch (error) {
-        console.error('Ошибка при загрузке расхода материалов:', error);
-      }
+    openAddExpenditureModal() {
+      this.showExpenditureModal = true;
+      this.currentExpenditure = { materialId: '', date: '', quantity: 0 };
     },
     openAddPurchaseModal() {
       this.showPurchaseModal = true;
-      this.editingPurchase = false;
-      this.currentPurchase = { material: '', supplier: '', quantity: 0, cost: 0, date: '' };
+      this.currentPurchase = { materialId: '', supplier: '', quantity: 0, cost: 0, date: '' };
     },
-    openEditPurchaseModal(purchase) {
-      this.showPurchaseModal = true;
-      this.editingPurchase = true;
-      this.currentPurchase = { ...purchase };
-    },
-    deletePurchase(id) {
-      this.purchases = this.purchases.filter(p => p.id !== id);
+    saveExpenditure() {
+      if (this.currentExpenditure.quantity > 0) {
+        this.expenditures.push({ ...this.currentExpenditure, id: Date.now() });
+        this.closeExpenditureModal();
+      } else {
+        alert('Количество расхода должно быть больше 0');
+      }
     },
     savePurchase() {
-      if (this.editingPurchase) {
-        const index = this.purchases.findIndex(p => p.id === this.currentPurchase.id);
-        this.purchases[index] = { ...this.currentPurchase };
-      } else {
+      if (this.currentPurchase.quantity > 0 && this.currentPurchase.cost >= 0) {
         this.purchases.push({ ...this.currentPurchase, id: Date.now() });
+        this.closePurchaseModal();
+      } else {
+        alert('Количество должно быть больше 0, а стоимость не может быть отрицательной');
       }
-      this.closePurchaseModal();
     },
-    sortPurchases() {
-      this.purchases.sort((a, b) => a.material.localeCompare(b.material));
+    closeExpenditureModal() {
+      this.showExpenditureModal = false;
+      this.currentExpenditure = {};
     },
     closePurchaseModal() {
       this.showPurchaseModal = false;
@@ -130,33 +200,30 @@ export default {
       const date = new Date(dateString);
       return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
     },
-    goToAdminHome(){
+    goToAdminHome() {
       this.$router.push({ name: 'AdminHome' });
     },
-    goToEmployeesPage(){
+    goToEmployeesPage() {
       this.$router.push({ name: 'ManageEmp' });
     },
-    goToOrdersPage(){
+    goToOrdersPage() {
       this.$router.push({ name: 'OrderHistory' });
     },
+    goToBookingsPage() {
+      this.$router.push({ name: 'Bookings' });
+    },
+    goToServicesPage() {
+      this.$router.push({ name: 'Services' });
+    }
   }
 };
 </script>
 
 <style scoped>
-.purchases-section{
-  margin-bottom: 5vh;
-}
-
-.navigation-buttons{
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-}
-
 .materials-overview {
   padding: 20px;
-  max-width: 900px;
+  max-width: 1500px;
+  max-height: 100vh;
   margin: 0 auto;
 }
 
@@ -165,10 +232,18 @@ h2 {
   margin-bottom: 20px;
 }
 
+.materials-section, .expenditures-section, .purchases-section {
+  background-color: #f9f9f9;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
 table {
   width: 100%;
-  margin-top: 10px;
   border-collapse: collapse;
+  margin-top: 10px;
 }
 
 table th,
@@ -178,28 +253,19 @@ table td {
   text-align: left;
 }
 
-.btn {
-  background-color: #4CAF50;
-  color: white;
-  padding: 10px 15px;
-  border: none;
+label {
+  display: block;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
   border-radius: 5px;
-  cursor: pointer;
-  font-size: 1em;
-  transition: background-color 0.3s ease;
-  margin-right: 5px;
-}
-
-.btn:hover {
-  background-color: #45a049;
-}
-
-.btn.danger {
-  background-color: #f44336;
-}
-
-.btn.danger:hover {
-  background-color: #d32f2f;
+  box-sizing: border-box;
 }
 
 .modal-overlay {
@@ -220,27 +286,59 @@ table td {
   border-radius: 10px;
   max-width: 400px;
   width: 100%;
+}
+
+.card-panel {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.card {
+  background-color: #4CAF50;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 5px;
+  width: 180px;
+  text-align: center;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  color: white;
+  transition: transform 0.3s, box-shadow 0.3s;
 }
 
-.input {
-  width: 100%;
-  padding: 12px;
-  margin: 8px 0;
-  border: 1px solid #ddd;
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
   border-radius: 5px;
-  box-sizing: border-box;
-  font-size: 1em;
-  transition: border-color 0.3s ease;
+  cursor: pointer;
+  margin: 5px;
 }
 
-.input:focus {
-  border-color: #4CAF50;
-  outline: none;
+.btn:hover {
+  background-color: #45a049;
 }
 
-.input[type="date"] {
-  font-family: inherit;
-  color: #555;
+.btn.danger {
+  background-color: #f44336;
+}
+
+.btn.danger:hover {
+  background-color: #d32f2f;
+}
+
+.navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
 }
 </style>

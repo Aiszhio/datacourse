@@ -1,107 +1,91 @@
+<template>
+  <div class="user-dashboard">
+    <h2>Панель пользователя</h2>
+    <h3>Добро пожаловать, {{ userName }}!</h3>
+
+    <!-- Раздел "Ваши заказы" -->
+    <div class="orders-section">
+      <h3>Ваши заказы</h3>
+      <div v-if="loading" class="loading">Загрузка ваших заказов...</div>
+
+      <div v-if="!loading && limitedOrders.length > 0" class="order-table">
+        <table>
+          <thead>
+          <tr>
+            <th>Номер заказа</th>
+            <th>Номер клиента</th>
+            <th>Номер сотрудника</th>
+            <th>Название услуги</th>
+            <th>Дата оформления</th>
+            <th>Дата получения</th>
+            <th>Статус</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr v-for="order in limitedOrders" :key="order.OrderID">
+            <td>{{ order.OrderID }}</td>
+            <td>{{ order.ClientID }}</td>
+            <td>{{ order.EmployeeID || 'Не назначен' }}</td>
+            <td>{{ order.ServiceName }}</td>
+            <td>{{ formatDate(order.OrderDate) }}</td>
+            <td>{{ formatDate(order.ReceiptDate) }}</td>
+            <td>{{ order.Status }}</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="!loading && limitedOrders.length === 0" class="no-orders">
+        У вас нет текущих заказов.
+      </div>
+    </div>
+
+    <!-- Навигационные кнопки -->
+    <div class="card-panel">
+      <div @click="goToCreateOrder" class="card">
+        <h4>Сделать заказ</h4>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script>
 export default {
   name: 'User',
   data() {
     return {
-      userName: 'Имя Пользователя', // Можно получить из бэкенда или сессии
-      orders: [], // Текущие заказы пользователя
-      loading: true, // Флаг загрузки заказов
+      userName: 'Имя Пользователя', // Имя пользователя
+      orders: [
+        {
+          OrderID: 123,
+          ClientID: 456,
+          EmployeeID: 789, // Номер сотрудника, назначенного на заказ
+          ServiceName: 'Фотосессия',
+          OrderDate: '2024-10-01',
+          ReceiptDate: '2024-10-10',
+          Status: 'В процессе'
+        }
+      ], // Пример текущего заказа пользователя
+      loading: false, // Устанавливаем на false, чтобы отключить индикатор загрузки
       orderLimit: 3 // Ограничение на количество отображаемых заказов
     };
   },
-  mounted() {
-    this.fetchOrders(); // Загружаем заказы при загрузке страницы
-  },
   computed: {
     limitedOrders() {
-      return this.orders.slice(0, this.orderLimit); // Ограничиваем количество заказов
+      return this.orders.slice(0, this.orderLimit);
     }
   },
   methods: {
-    async fetchOrders() {
-      try {
-        const response = await fetch('http://localhost:8080/api/client/orders', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer your-auth-token' // Токен авторизации, если требуется
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Ошибка при получении заказов');
-        }
-
-        const data = await response.json();
-        this.orders = data; // Записываем полученные заказы
-      } catch (error) {
-        console.error('Ошибка:', error.message);
-        alert('Не удалось загрузить заказы.');
-      } finally {
-        this.loading = false; // Отключаем флаг загрузки
-      }
-    },
     formatDate(dateString) {
       const date = new Date(dateString);
       return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
     },
     goToCreateOrder() {
-      this.$router.push({ name: 'ClientOrders' }); // Переход на страницу создания заказа
-    },
-    goToPayInvoices() {
-      this.$router.push({ name: 'Payment' }); // Переход на страницу оплаты счетов
+      this.$router.push({ name: 'ClientOrders' });
     }
   }
 };
 </script>
-
-<template>
-  <div class="user-dashboard">
-    <h2>Панель пользователя</h2>
-
-    <h3>Добро пожаловать, {{ userName }}!</h3>
-
-    <!-- Список текущих заказов -->
-    <div class="orders-section section">
-      <h3>Ваши заказы</h3>
-      <div v-if="loading" class="loading">Загрузка ваших заказов...</div>
-
-      <!-- Таблица заказов всегда отображается -->
-      <table class="orders-table">
-        <thead>
-        <tr>
-          <th>ID Заказа</th>
-          <th>Услуга</th>
-          <th>Дата заказа</th>
-          <th>Дата получения</th>
-          <th>Текущий статус</th>
-        </tr>
-        </thead>
-        <tbody>
-        <!-- Показать данные, если они загружены -->
-        <tr v-if="!loading && limitedOrders.length > 0" v-for="order in limitedOrders" :key="order.OrderID">
-          <td>{{ order.OrderID }}</td>
-          <td>{{ order.ServiceName }}</td>
-          <td>{{ formatDate(order.OrderDate) }}</td>
-          <td>{{ formatDate(order.ReceiptDate) }}</td>
-          <td>{{ order.Status }}</td>
-        </tr>
-        <!-- Показать пустую строку, если данных нет -->
-        <tr v-if="!loading && limitedOrders.length === 0">
-          <td colspan="5" class="no-orders">У вас нет текущих заказов.</td>
-        </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Кнопки для навигации -->
-    <div class="navigation-buttons">
-      <button @click="goToCreateOrder" class="btn">Сделать заказ</button>
-      <button @click="goToPayInvoices" class="btn">Оплатить счета</button>
-    </div>
-  </div>
-</template>
-
 
 <style scoped>
 .user-dashboard {
@@ -110,29 +94,30 @@ export default {
   max-width: 900px;
 }
 
-.section {
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  padding: 20px;
+.orders-section {
   margin-bottom: 20px;
 }
 
-.orders-table {
-  width: 100%;
-  border-collapse: collapse;
+.order-table {
   margin-top: 20px;
+  border-collapse: collapse;
+  width: 100%;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.orders-table th,
-.orders-table td {
+.order-table table {
+  width: 100%;
+}
+
+.order-table th, .order-table td {
   padding: 12px;
   border: 1px solid #ddd;
   text-align: left;
 }
 
-.orders-table th {
+.order-table th {
   background-color: #f2f2f2;
+  font-weight: bold;
 }
 
 .loading {
@@ -145,27 +130,30 @@ export default {
   text-align: center;
   color: #999;
   font-size: 1.2em;
+  margin-top: 20px;
 }
 
-.btn {
-  background-color: #4CAF50; /* Зеленый цвет фона */
-  color: white; /* Белый текст */
-  padding: 10px 20px; /* Внутренние отступы */
-  border: none; /* Убираем рамку */
-  border-radius: 5px; /* Скругляем углы */
-  cursor: pointer; /* Указатель мыши при наведении */
-  font-size: 1em;
-  transition: background-color 0.3s ease; /* Плавная смена цвета при наведении */
+.card-panel {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 20px;
 }
 
-.btn:hover {
+.card {
   background-color: #4CAF50;
   color: white;
+  border-radius: 10px;
+  padding: 10px;
+  width: 180px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
 }
 
-.navigation-buttons {
-  display: flex;
-  justify-content: space-between;
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
-
 </style>

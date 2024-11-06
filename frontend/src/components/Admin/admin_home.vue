@@ -1,83 +1,39 @@
 <template>
   <div class="admin-dashboard">
-    <h2>Панель администратора</h2>
+    <h2>Добро пожаловать, Администратор!</h2>
+    <p>Сегодня: {{ currentDate }}</p>
 
-    <!-- Раздел со списком сотрудников -->
-    <div class="section">
-      <h3>Список сотрудников</h3>
-      <table>
-        <thead>
-        <tr>
-          <th>ID</th>
-          <th>Имя</th>
-          <th>Должность</th>
-          <th>Дата найма</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="employee in displayedEmployees" :key="employee.id">
-          <td>{{ employee.id }}</td>
-          <td>{{ employee.name }}</td>
-          <td>{{ employee.position }}</td>
-          <td>{{ formatDate(employee.hireDate) }}</td>
-        </tr>
-        </tbody>
-      </table>
-      <button @click="goToEmployeesPage" class="btn">Управление сотрудниками</button>
+    <!-- Панель с карточками первого ряда -->
+    <div class="card-panel">
+      <div class="card" @click="goToEmployeesPage">
+        <i class="fas fa-user-tie icon"></i>
+        <h3>Сотрудники</h3>
+        <p>Управление персоналом</p>
+      </div>
+      <div class="card" @click="goToOrdersPage">
+        <i class="fas fa-clipboard-list icon"></i>
+        <h3>Заказы</h3>
+        <p>История заказов</p>
+      </div>
+      <div class="card" @click="goToMaterialsPage">
+        <i class="fas fa-box icon"></i>
+        <h3>Закупки</h3>
+        <p>Материалы и расходы</p>
+      </div>
     </div>
 
-    <!-- Раздел с историей заказов -->
-    <div class="section">
-      <h3>История заказов</h3>
-      <table>
-        <thead>
-        <tr>
-          <th>ID Заказа</th>
-          <th>Клиент</th>
-          <th>Услуга</th>
-          <th>Дата заказа</th>
-          <th>Статус</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="order in displayedOrders" :key="order.id">
-          <td>{{ order.id }}</td>
-          <td>{{ order.client }}</td>
-          <td>{{ order.service }}</td>
-          <td>{{ formatDate(order.orderDate) }}</td>
-          <td>{{ order.status }}</td>
-        </tr>
-        </tbody>
-      </table>
-      <button @click="goToOrdersPage" class="btn">История заказов</button>
-    </div>
-
-    <!-- Раздел с историей закупок -->
-    <div class="section">
-      <h3>История закупок</h3>
-      <table>
-        <thead>
-        <tr>
-          <th>ID Закупки</th>
-          <th>Материал</th>
-          <th>Поставщик</th>
-          <th>Количество</th>
-          <th>Стоимость</th>
-          <th>Дата закупки</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr v-for="purchase in displayedPurchases" :key="purchase.id">
-          <td>{{ purchase.id }}</td>
-          <td>{{ purchase.material }}</td>
-          <td>{{ purchase.supplier }}</td>
-          <td>{{ purchase.quantity }}</td>
-          <td>{{ purchase.cost }}</td>
-          <td>{{ formatDate(purchase.date) }}</td>
-        </tr>
-        </tbody>
-      </table>
-      <button @click="goToMaterialsPage" class="btn">Просмотр закупок и расходов материалов</button>
+    <!-- Панель с карточками второго ряда -->
+    <div class="card-panel">
+      <div class="card" @click="goToServicesPage">
+        <i class="fas fa-concierge-bell icon"></i>
+        <h3>Услуги</h3>
+        <p>Список доступных услуг</p>
+      </div>
+      <div class="card" @click="goToBookingPage">
+        <i class="fas fa-calendar-check icon"></i>
+        <h3>Бронирование</h3>
+        <p>Управление бронированием</p>
+      </div>
     </div>
   </div>
 </template>
@@ -87,39 +43,12 @@ export default {
   name: 'AdminDashboard',
   data() {
     return {
-      employees: [
-        { id: 1, name: 'Иван Иванов', position: 'Фотограф', hireDate: '2023-01-15' },
-        { id: 2, name: 'Анна Петрова', position: 'Редактор', hireDate: '2022-05-20' },
-        // Дополнительные записи
-      ],
-      orders: [
-        { id: 101, client: 'Мария Сидорова', service: 'Фотосессия', orderDate: '2024-08-15', status: 'Выполнен' },
-        { id: 102, client: 'Петр Иванов', service: 'Фотоальбом', orderDate: '2024-09-01', status: 'В процессе' },
-        // Дополнительные записи
-      ],
-      purchases: [
-        { id: 301, material: 'Фотобумага', supplier: 'Art Supplies Inc.', quantity: 100, cost: 1500, date: '2024-08-01' },
-        { id: 302, material: 'Картридж для принтера', supplier: 'Print Solutions Ltd.', quantity: 50, cost: 5000, date: '2024-08-05' },
-        // Дополнительные записи
-      ]
+      currentDate: new Date().toLocaleDateString('ru-RU', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      })
     };
   },
-  computed: {
-    displayedEmployees() {
-      return this.employees.slice(0, 5); // Показываем только первых 5 сотрудников
-    },
-    displayedOrders() {
-      return this.orders.slice(0, 5); // Показываем только первые 5 заказов
-    },
-    displayedPurchases() {
-      return this.purchases.slice(0, 5); // Показываем только первые 5 закупок
-    }
-  },
   methods: {
-    formatDate(dateString) {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
-    },
     goToEmployeesPage() {
       this.$router.push({ name: 'ManageEmp' });
     },
@@ -128,49 +57,69 @@ export default {
     },
     goToMaterialsPage() {
       this.$router.push({ name: 'MaterialsOverview' });
+    },
+    goToServicesPage() {
+      this.$router.push({ name: 'Services' });
+    },
+    goToBookingPage() {
+      this.$router.push({ name: 'Bookings' });
     }
   }
 };
 </script>
 
 <style scoped>
-.admin-dashboard{
-  max-height: 100vh;
+.admin-dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  text-align: center;
 }
 
-.section {
-  background-color: #f9f9f9; /* Светлый фон для контраста */
-  border-radius: 10px; /* Округление углов */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Тень для объема */
-  padding: 20px; /* Увеличенный padding для большего пространства */
-  margin-bottom: 20px; /* Отступ снизу */
+h2 {
+  color: #333;
+  margin-bottom: 10px;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 10px;
+p {
+  color: #B0C4DE;
+  margin-bottom: 20px;
 }
 
-table th,
-table td {
-  padding: 8px;
-  border: 1px solid #ddd;
-  text-align: left;
+.card-panel {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-.btn {
+.card {
   background-color: #4CAF50;
-  color: white;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 4px;
+  border-radius: 10px;
+  padding: 15px;
+  margin: 5px;
+  width: 180px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s, box-shadow 0.3s;
   cursor: pointer;
-  transition: background-color 0.3s;
-  margin: 10px;
 }
 
-.btn:hover {
-  background-color: #45a049;
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.icon {
+  font-size: 40px;
+  color: #FFFFE0;
+  margin-bottom: 10px;
+}
+
+h3 {
+  color: #FFFFE0;
+  margin-bottom: 5px;
+  font-size: 18px;
 }
 </style>

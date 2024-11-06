@@ -1,131 +1,158 @@
-<script>
-export default {
-  name: 'worker',
-  data() {
-    return {
-      workerName: 'Имя Сотрудника', // Имя сотрудника, можно получить из бэкенда
-      orders: [], // Заказы, назначенные сотруднику
-      loading: true, // Флаг загрузки заказов
-      orderLimit: 3 // Количество отображаемых заказов
-    };
-  },
-  mounted() {
-    this.fetchOrders(); // Загружаем заказы при загрузке страницы
-  },
-  computed: {
-    limitedOrders() {
-      // Ограничиваем количество заказов до трех
-      return this.orders.slice(0, this.orderLimit);
-    }
-  },
-  methods: {
-    async fetchOrders() {
-      try {
-        console.log("Начинается загрузка заказов...");
-        const response = await fetch('http://localhost:8080/api/worker/orders', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer your-auth-token' // Если требуется токен авторизации
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Ошибка при получении заказов');
-        }
-
-        const data = await response.json();
-        this.orders = data.map(order => ({ ...order, updatedStatus: order.Status }));
-        console.log("Загруженные заказы:", this.orders); // Вывод загруженных данных
-
-      } catch (error) {
-        console.error('Ошибка при загрузке заказов:', error.message);
-        alert('Не удалось загрузить заказы.');
-      } finally {
-        this.loading = false;
-      }
-    },
-    async updateOrderStatus(order) {
-      try {
-        const response = await fetch(`http://localhost:8080/api/orders/${order.OrderID}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer your-auth-token'
-          },
-          body: JSON.stringify({ status: order.updatedStatus })
-        });
-
-        if (!response.ok) {
-          throw new Error('Ошибка при обновлении статуса заказа');
-        }
-
-        alert(`Статус заказа #${order.OrderID} обновлён на "${order.updatedStatus}"`);
-        order.Status = order.updatedStatus; // Обновляем локальный статус
-      } catch (error) {
-        console.error('Ошибка:', error.message);
-        alert('Не удалось обновить статус заказа.');
-      }
-    },
-    formatDate(dateString) {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
-    },
-    goToWorkerOrders() {
-      this.$router.push({ name: 'WorkerOrders' }); // Переход на страницу с заказами фотографа
-    }
-  }
-};
-</script>
-
 <template>
   <div class="worker-dashboard">
-    <h2>Панель сотрудника</h2>
+    <h2>Панель фотографа</h2>
     <h3>Добро пожаловать, {{ workerName }}!</h3>
 
     <!-- Список текущих заказов -->
     <div class="orders-section">
-      <h3>Предстоящие заказы</h3>
+      <h3>Заказы</h3>
       <div v-if="loading" class="loading">Загрузка заказов...</div>
 
-      <!-- Таблица заказов (выводится всегда) -->
+      <!-- Таблица заказов -->
       <table class="orders-table">
         <thead>
         <tr>
-          <th>ID Заказа</th>
-          <th>Услуга</th>
-          <th>Дата заказа</th>
-          <th>Статус</th>
-          <th>Обновить статус</th>
+          <th>Номер заказа</th>
+          <th>Номер клиента</th>
+          <th>Номер сотрудника</th>
+          <th>Название услуги</th>
+          <th>Дата оформления</th>
+          <th>Дата получения</th>
+          <th>Действия</th>
         </tr>
         </thead>
         <tbody>
         <tr v-if="!loading && limitedOrders.length > 0" v-for="order in limitedOrders" :key="order.OrderID">
           <td>{{ order.OrderID }}</td>
+          <td>{{ order.ClientID }}</td>
+          <td>{{ order.EmployeeName || "Не назначен" }}</td>
           <td>{{ order.ServiceName }}</td>
           <td>{{ formatDate(order.OrderDate) }}</td>
-          <td>{{ order.Status }}</td>
+          <td>{{ formatDate(order.ReceiveDate) }}</td>
           <td>
-            <select v-model="order.updatedStatus" @change="updateOrderStatus(order)">
-              <option value="В процессе">В процессе</option>
-              <option value="Завершён">Завершён</option>
-            </select>
+            <button v-if="!order.isAssigned" @click="openTakeOrderModal(order)" class="btn">Взять</button>
+            <button v-else @click="releaseOrder(order)" class="btn danger">Отказаться</button>
           </td>
         </tr>
-
-        <!-- Пустые строки для отображения таблицы даже без данных -->
         <tr v-else>
-          <td colspan="5" class="no-orders">Нет доступных заказов</td>
+          <td colspan="7" class="no-orders">Нет доступных заказов</td>
         </tr>
         </tbody>
       </table>
-      <!-- Кнопки для навигации -->
-      <div class="navigation-buttons">
-        <button @click="goToWorkerOrders" class="btn">Просмотреть все заказы</button>
+    </div>
+
+    <!-- Модальное окно для взятия заказа -->
+    <div v-if="showTakeOrderModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Оформление заказа</h3>
+        <label for="workerNameInput">ФИО сотрудника</label>
+        <input id="workerNameInput" v-model="workerNameInput" class="input" placeholder="Введите ФИО" required />
+        <button @click="confirmTakeOrder" class="btn">Подтвердить</button>
+        <button @click="closeTakeOrderModal" class="btn danger">Отмена</button>
       </div>
     </div>
   </div>
 </template>
+
+<script>
+export default {
+  name: 'worker',
+  data() {
+    return {
+      workerName: 'Имя Сотрудника', // Имя сотрудника
+      workerNameInput: '', // Поле для ввода ФИО в модальном окне
+      orders: [
+        {
+          OrderID: 123,
+          ClientID: 456,
+          EmployeeID: null, // Пока заказ не назначен сотруднику
+          EmployeeName: null,
+          ServiceName: 'Фотосессия',
+          OrderDate: '2024-10-01',
+          ReceiveDate: '2024-10-10',
+          isAssigned: false // Флаг, указывающий, что заказ пока не взят
+        }
+      ],
+      loading: false, // Флаг загрузки заказов
+      orderLimit: 3, // Количество отображаемых заказов
+      showTakeOrderModal: false, // Показ модального окна для взятия заказа
+      currentOrder: null // Текущий выбранный заказ для взятия
+    };
+  },
+  computed: {
+    limitedOrders() {
+      return this.orders.slice(0, this.orderLimit);
+    }
+  },
+  methods: {
+    openTakeOrderModal(order) {
+      this.currentOrder = order;
+      this.showTakeOrderModal = true;
+    },
+    closeTakeOrderModal() {
+      this.workerNameInput = '';
+      this.showTakeOrderModal = false;
+    },
+    async confirmTakeOrder() {
+      if (!this.workerNameInput) {
+        alert('Пожалуйста, введите ФИО');
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:8080/api/orders/${this.currentOrder.OrderID}/assign`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer your-auth-token'
+          },
+          body: JSON.stringify({employeeName: this.workerNameInput})
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при взятии заказа');
+        }
+
+        alert(`Заказ #${this.currentOrder.OrderID} взят на исполнение`);
+        this.currentOrder.isAssigned = true;
+        this.currentOrder.EmployeeName = this.workerNameInput; // Обновляем имя сотрудника
+        this.closeTakeOrderModal();
+
+      } catch (error) {
+        console.error('Ошибка при взятии заказа:', error.message);
+        alert('Не удалось взять заказ.');
+      }
+    },
+    async releaseOrder(order) {
+      try {
+        const response = await fetch(`http://localhost:8080/api/orders/${order.OrderID}/unassign`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer your-auth-token'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при отказе от заказа');
+        }
+
+        alert(`Вы отказались от заказа #${order.OrderID}`);
+        order.isAssigned = false;
+        order.EmployeeName = null; // Убираем назначение сотрудника локально
+
+      } catch (error) {
+        console.error('Ошибка при отказе от заказа:', error.message);
+        alert('Не удалось отказаться от заказа.');
+      }
+    },
+    formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ru-RU', {year: 'numeric', month: 'long', day: 'numeric'});
+    }
+  }
+};
+</script>
 
 <style scoped>
 .worker-dashboard {
@@ -163,10 +190,6 @@ export default {
   color: #999;
 }
 
-.status-update {
-  margin-top: 15px;
-}
-
 .btn {
   background-color: #4CAF50;
   color: white;
@@ -176,10 +199,19 @@ export default {
   cursor: pointer;
   font-size: 1em;
   transition: background-color 0.3s ease;
+  margin: 5px;
 }
 
 .btn:hover {
   background-color: #45a049;
+}
+
+.btn.danger {
+  background-color: #f44336;
+}
+
+.btn.danger:hover {
+  background-color: #d32f2f;
 }
 
 .loading {
@@ -188,9 +220,32 @@ export default {
   font-size: 1.2em;
 }
 
-.navigation-buttons {
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
+  align-items: center;
   justify-content: center;
-  margin-top: 20px;
+}
+
+.modal {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box;
 }
 </style>

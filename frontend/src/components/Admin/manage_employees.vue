@@ -6,17 +6,20 @@
     <div class="add-employee-section">
       <h3>Добавить сотрудника</h3>
       <form @submit.prevent="addEmployee">
+        <label for="name">ФИО</label>
         <input type="text" v-model="newEmployee.name" placeholder="ФИО сотрудника" required />
+        <label for="name">Должность</label>
         <input type="text" v-model="newEmployee.position" placeholder="Должность" required />
-        <input type="date" v-model="newEmployee.hireDate" required />
+        <label for="name">Дата оформления</label>
+        <input type="date" v-model="newEmployee.hireDate" placeholder="Дата оформления" required />
+        <label for="name">День рождения</label>
+        <input type="date" v-model="newEmployee.birthDate" placeholder="День рождения" required />
+        <label for="name">Паспортные данные</label>
+        <input type="text" v-model="newEmployee.passport" placeholder="Паспортные данные" required />
+        <label for="name">Номер телефона</label>
+        <input type="tel" v-model="newEmployee.phone" placeholder="Номер телефона" required />
         <button type="submit" class="btn">Добавить сотрудника</button>
       </form>
-    </div>
-
-    <!-- Раздел фильтра сотрудников -->
-    <div class="filter-section">
-      <h3>Фильтр по должности</h3>
-      <input type="text" v-model="positionFilter" placeholder="Введите должность" />
     </div>
 
     <!-- Раздел списка сотрудников -->
@@ -25,10 +28,13 @@
       <table>
         <thead>
         <tr>
-          <th>ID</th>
+          <th>Номер</th>
           <th>ФИО</th>
           <th>Должность</th>
-          <th>Дата найма</th>
+          <th>Дата оформления</th>
+          <th>День рождения</th>
+          <th>Паспортные данные</th>
+          <th>Номер телефона</th>
           <th>Действия</th>
         </tr>
         </thead>
@@ -38,6 +44,9 @@
           <td>{{ employee.name }}</td>
           <td>{{ employee.position }}</td>
           <td>{{ formatDate(employee.hireDate) }}</td>
+          <td>{{ formatDate(employee.birthDate) }}</td>
+          <td>{{ employee.passport }}</td>
+          <td>{{ employee.phone }}</td>
           <td>
             <button @click="openEditEmployeeModal(employee)" class="btn">Редактировать</button>
             <button @click="deleteEmployee(employee.id)" class="btn danger">Удалить</button>
@@ -47,24 +56,58 @@
       </table>
     </div>
 
-    <!-- Модальное окно для редактирования сотрудника -->
+    <!-- Модальное окно для редактирования сотрудника с подсказками -->
     <div v-if="showEditEmployeeModal" class="modal-overlay">
       <div class="modal">
         <h3>Редактировать сотрудника</h3>
-        <input v-model="currentEmployee.name" class="input" placeholder="ФИО" required />
-        <input v-model="currentEmployee.position" class="input" placeholder="Должность" required />
-        <input type="date" v-model="currentEmployee.hireDate" class="input" required />
+
+        <label for="name">ФИО</label>
+        <input id="name" v-model="currentEmployee.name" class="input" placeholder="ФИО" required />
+
+        <label for="position">Должность</label>
+        <input id="position" v-model="currentEmployee.position" class="input" placeholder="Должность" required />
+
+        <label for="hireDate">Дата оформления</label>
+        <input id="hireDate" type="date" v-model="currentEmployee.hireDate" class="input" required />
+
+        <label for="birthDate">День рождения</label>
+        <input id="birthDate" type="date" v-model="currentEmployee.birthDate" class="input" required />
+
+        <label for="passport">Паспортные данные</label>
+        <input id="passport" v-model="currentEmployee.passport" class="input" placeholder="Паспортные данные" required />
+
+        <label for="phone">Номер телефона</label>
+        <input id="phone" type="tel" v-model="currentEmployee.phone" class="input" placeholder="Номер телефона" required />
+
         <button @click="saveEmployee" class="btn">Сохранить</button>
         <button @click="closeEditEmployeeModal" class="btn danger">Отмена</button>
       </div>
     </div>
 
-    <!-- Кнопки для навигации по другим страницам -->
-    <div class="navigation-buttons">
-      <button @click="goToAdminHome" class="btn">На главную администратора</button>
-      <button @click="goToOrderHistory" class="btn">История заказов</button>
-      <button @click="goToMaterialsManagement" class="btn">Управление материалами</button>
+    <!-- Панель навигации -->
+    <div class="card-panel">
+      <div class="card" @click="goToAdminHome">
+        <h4>На главную</h4>
+        <p>Панель администратора</p>
+      </div>
+      <div class="card" @click="goToOrderHistory">
+        <h4>Заказы</h4>
+        <p>История заказов</p>
+      </div>
+      <div class="card" @click="goToMaterialsManagement">
+        <h4>Материалы</h4>
+        <p>Управление материалами</p>
+      </div>
+      <div class="card" @click="goToBookingsPage">
+        <h4>Бронирование</h4>
+        <p>Управление бронированиями</p>
+      </div>
+      <div class="card" @click="goToServicesPage">
+        <h4>Услуги</h4>
+        <p>Управление услугами</p>
+      </div>
     </div>
+
   </div>
 </template>
 
@@ -73,10 +116,26 @@ export default {
   name: 'ManageEmployees',
   data() {
     return {
-      newEmployee: { name: '', position: '', hireDate: '' },
+      newEmployee: { name: '', position: '', hireDate: '', birthDate: '', passport: '', phone: '' },
       employees: [
-        { id: 1, name: 'Иван Иванов', position: 'Фотограф', hireDate: '2023-01-15' },
-        { id: 2, name: 'Анна Петрова', position: 'Редактор', hireDate: '2022-05-20' }
+        {
+          id: 1,
+          name: 'Иван Иванов',
+          position: 'Фотограф',
+          hireDate: '2023-01-15',
+          birthDate: '1990-06-01',
+          passport: '1234 567890',
+          phone: '+7 912 345 6789'
+        },
+        {
+          id: 2,
+          name: 'Анна Петрова',
+          position: 'Редактор',
+          hireDate: '2022-05-20',
+          birthDate: '1988-11-15',
+          passport: '9876 543210',
+          phone: '+7 903 876 5432'
+        }
       ],
       showEditEmployeeModal: false,
       currentEmployee: {},
@@ -100,18 +159,20 @@ export default {
         id: newId,
         name: this.newEmployee.name,
         position: this.newEmployee.position,
-        hireDate: this.newEmployee.hireDate
+        hireDate: this.newEmployee.hireDate,
+        birthDate: this.newEmployee.birthDate,
+        passport: this.newEmployee.passport,
+        phone: this.newEmployee.phone
       };
-
       this.employees.push(employee);
-      this.newEmployee = { name: '', position: '', hireDate: '' };
+      this.newEmployee = { name: '', position: '', hireDate: '', birthDate: '', passport: '', phone: '' };
     },
     deleteEmployee(id) {
       this.employees = this.employees.filter(employee => employee.id !== id);
       alert(`Сотрудник с ID #${id} удален.`);
     },
     openEditEmployeeModal(employee) {
-      this.currentEmployee = { ...employee }; // Копируем данные сотрудника в текущий объект
+      this.currentEmployee = { ...employee };
       this.showEditEmployeeModal = true;
     },
     closeEditEmployeeModal() {
@@ -138,6 +199,12 @@ export default {
     },
     goToMaterialsManagement() {
       this.$router.push({ name: 'MaterialsOverview' });
+    },
+    goToBookingsPage() {
+      this.$router.push({ name: 'Bookings' });
+    },
+    goToServicesPage() {
+      this.$router.push({ name: 'Services' });
     }
   }
 };
@@ -147,7 +214,7 @@ export default {
 .manage-employees {
   padding: 20px;
   margin: 0 auto;
-  max-width: 900px;
+  max-width: 1500px;
   max-height: 100vh;
 }
 
@@ -157,17 +224,25 @@ h2 {
 }
 
 .add-employee-section,
-.filter-section,
 .employee-list-section {
   background-color: #f9f9f9;
   padding: 20px;
   margin-bottom: 20px;
   border-radius: 10px;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-top: 10px;
 }
 
 input[type="text"],
 input[type="date"],
+input[type="tel"],
 .input {
   padding: 10px;
   margin: 10px 0;
@@ -193,6 +268,32 @@ table td {
   display: flex;
   justify-content: space-around;
   margin-top: 20px;
+}
+
+.card-panel {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.card {
+  background-color: #4CAF50;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 5px;
+  width: 180px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  color: white;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 .btn {
