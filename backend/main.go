@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/Aiszhio/datacourse.git/pkg/Authentification"
 	"github.com/Aiszhio/datacourse.git/pkg/db"
+	"github.com/Aiszhio/datacourse.git/pkg/handlers"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 )
 
 func main() {
@@ -26,17 +29,13 @@ func main() {
 		return
 	}
 
-	webApp.Get("/", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"key": "here we are!!!"})
-	})
-	fmt.Println("Listening on port 8080")
-	webApp.Get("/data", func(c *fiber.Ctx) error {
-		data, err := db.GetAllData(dbu)
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
-		}
-		return c.JSON(data)
-	})
+	webApp.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowHeaders: "*",
+		AllowMethods: "*",
+	}))
+	webApp.Post("/api/login", Authentification.Authorize(dbu))
+	webApp.Get("/client", handlers.GetUserData(dbu))
 
 	defer log.Fatal(webApp.Listen(":8080"))
 }
