@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "inputmask": "^5.0.9",
     "vue": "^3.4.29",
+    "vue-inputmask": "^0.2.1",
     "vue-router": "^4.0.13"
   },
   "devDependencies": {

@@ -1,3 +1,4 @@
+
 <template>
   <div class="user-dashboard">
     <h2>Панель пользователя</h2>
@@ -18,7 +19,6 @@
             <th>Название услуги</th>
             <th>Дата оформления</th>
             <th>Дата получения</th>
-            <th>Статус</th>
           </tr>
           </thead>
           <tbody>
@@ -29,7 +29,6 @@
             <td>{{ order.ServiceName }}</td>
             <td>{{ formatDate(order.OrderDate) }}</td>
             <td>{{ formatDate(order.ReceiptDate) }}</td>
-            <td>{{ order.Status }}</td>
           </tr>
           </tbody>
         </table>
@@ -55,18 +54,8 @@ export default {
   data() {
     return {
       userName: 'Имя Пользователя', // Имя пользователя
-      orders: [
-        {
-          OrderID: 123,
-          ClientID: 456,
-          EmployeeID: 789, // Номер сотрудника, назначенного на заказ
-          ServiceName: 'Фотосессия',
-          OrderDate: '2024-10-01',
-          ReceiptDate: '2024-10-10',
-          Status: 'В процессе'
-        }
-      ], // Пример текущего заказа пользователя
-      loading: false, // Устанавливаем на false, чтобы отключить индикатор загрузки
+      orders: [], // Список заказов, загружаемых с сервера
+      loading: true, // Устанавливаем на true для отображения индикатора загрузки
       orderLimit: 3 // Ограничение на количество отображаемых заказов
     };
   },
@@ -75,13 +64,40 @@ export default {
       return this.orders.slice(0, this.orderLimit);
     }
   },
+  mounted() {
+    this.fetchOrders(); // Загружаем заказы при загрузке страницы
+  },
   methods: {
+    async fetchOrders() {
+      try {
+        const response = await fetch('http://localhost:8080/api/orders', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            // Добавьте токен авторизации, если требуется
+            // 'Authorization': 'Bearer your-auth-token'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при получении заказов');
+        }
+
+        const data = await response.json();
+        this.orders = data; // Обновляем список заказов с сервера
+      } catch (error) {
+        console.error('Ошибка:', error.message);
+        alert('Не удалось загрузить заказы.');
+      } finally {
+        this.loading = false; // Выключаем индикатор загрузки после завершения
+      }
+    },
     formatDate(dateString) {
       const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+      return date.toLocaleDateString('ru-RU', {year: 'numeric', month: 'long', day: 'numeric'});
     },
     goToCreateOrder() {
-      this.$router.push({ name: 'ClientOrders' });
+      this.$router.push({name: 'ClientOrders'});
     }
   }
 };
@@ -157,3 +173,6 @@ export default {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 </style>
+
+
+

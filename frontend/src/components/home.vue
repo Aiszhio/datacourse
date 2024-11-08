@@ -1,6 +1,46 @@
 <script>
 export default {
   name: 'home',
+  data() {
+    return {
+      phone: '', // Changed from email to phone
+      password: '',
+      errorMessage: ''
+    };
+  },
+  methods: {
+    async login() {
+      try {
+        const response = await fetch('http://localhost:8080/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            phone: this.phone, // Using phone now
+            password: this.password
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка аутентификации');
+        }
+
+        const data = await response.json();
+        const token = data.token;
+        localStorage.setItem('authToken', token);
+
+        // Show an alert on successful login
+        alert('Авторизация прошла успешно!');
+
+        // Redirect to the ClientHome route
+        this.$router.push({ name: 'ClientHome' });
+      } catch (error) {
+        this.errorMessage = 'Ошибка входа. Проверьте данные и попробуйте снова.';
+        console.error(error);
+      }
+    }
+  }
 };
 </script>
 
@@ -8,9 +48,10 @@ export default {
   <div class="login-container">
     <h2>Вход в аккаунт</h2>
     <form @submit.prevent="login">
-      <input type="email" v-model="email" placeholder="Электронная почта" required />
+      <input type="tel" v-model="phone" placeholder="Номер телефона" required />
       <input type="password" v-model="password" placeholder="Пароль" required />
       <button type="submit" class="btn">Войти</button>
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     </form>
   </div>
 </template>
@@ -29,10 +70,10 @@ body {
 }
 
 .login-container {
-  background: rgba(255, 255, 255, 0.85); /* Чуть более прозрачный белый фон для мягкого эффекта */
+  background: rgba(255, 255, 255, 0.85);
   padding: 40px 30px;
   border-radius: 15px;
-  box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.3); /* Мягкая тень для улучшенного визуального эффекта */
+  box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.3);
   width: 360px;
   text-align: center;
 }
