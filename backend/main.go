@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/Aiszhio/datacourse.git/pkg/Authentification"
+	"github.com/Aiszhio/datacourse.git/pkg/Redis"
 	"github.com/Aiszhio/datacourse.git/pkg/db"
 	"github.com/Aiszhio/datacourse.git/pkg/handlers"
 	"github.com/gofiber/fiber/v2"
@@ -19,6 +20,8 @@ func main() {
 		return
 	}
 
+	rdb := Redis.InitRedisClient()
+
 	if err = db.MigrateDB(); err != nil {
 		fmt.Println("Error during DB migration:", err)
 		return
@@ -34,8 +37,10 @@ func main() {
 		AllowHeaders: "*",
 		AllowMethods: "*",
 	}))
-	webApp.Post("/api/login", Authentification.Authorize(dbu))
-	webApp.Get("/client", handlers.GetUserData(dbu))
 
+	webApp.Post("/api/login", Authentification.Authorize(dbu, rdb))
+	webApp.Get("/api/user", handlers.GetUserData(dbu, rdb))
+
+	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))
 }
