@@ -1,6 +1,6 @@
 <template>
   <div class="admin-dashboard">
-    <h2>Добро пожаловать, Администратор!</h2>
+    <h2>Добро пожаловать, {{ adminName }}!</h2>
     <p>Сегодня: {{ currentDate }}</p>
 
     <!-- Панель с карточками первого ряда -->
@@ -43,12 +43,38 @@ export default {
   name: 'AdminDashboard',
   data() {
     return {
+      adminName: 'Администратор', // Начальное значение для имени администратора
       currentDate: new Date().toLocaleDateString('ru-RU', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       })
     };
   },
+  mounted() {
+    this.fetchAdminName(); // Загружаем имя администратора при монтировании компонента
+  },
   methods: {
+    async fetchAdminName() {
+      try {
+        const response = await fetch('http://localhost:8080/api/user', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer your-auth-token' // Замените на реальный токен
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при получении имени администратора');
+        }
+
+        const data = await response.json();
+        this.adminName = data.name; // Обновляем adminName с полученным именем
+
+      } catch (error) {
+        console.error('Ошибка при получении имени администратора:', error.message);
+        alert('Не удалось загрузить имя администратора.');
+      }
+    },
     goToEmployeesPage() {
       this.$router.push({ name: 'ManageEmp' });
     },

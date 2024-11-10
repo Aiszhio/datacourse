@@ -10,7 +10,7 @@ import (
 
 func SetKey(client *redis.Client, key, value string) error {
 	ctx := context.Background()
-	return client.Set(ctx, key, value, 0).Err()
+	return client.Set(ctx, key, value, 30*time.Minute).Err()
 }
 
 func GetKey(client *redis.Client, key string) (string, error) {
@@ -26,7 +26,7 @@ func SetMultipleKey(client *redis.Client, key string, values interface{}) error 
 		return fmt.Errorf("error serializing data to JSON: %w", err)
 	}
 
-	if err = client.Set(ctx, key, jsonData, 5*time.Minute).Err(); err != nil {
+	if err = client.Set(ctx, key, jsonData, 30*time.Minute).Err(); err != nil {
 		fmt.Println("Error saving to Redis:", err)
 		return err
 	}

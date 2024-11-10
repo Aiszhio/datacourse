@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import home from './components/home.vue';
-import User from '@/components/Client/client_home.vue';
+import User from './components/Client/client_home.vue';
 import ClientOrders from "@/components/Client/client_orders.vue";
 import Worker from './components/Worker/worker_dashboard.vue';
 import AdminDashboard from './components/Admin/admin_home.vue';

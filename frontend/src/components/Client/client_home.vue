@@ -52,40 +52,47 @@ export default {
   name: 'User',
   data() {
     return {
-      userName: '', // Переменная для хранения имени пользователя
-      orders: [], // Список заказов, загружаемых с сервера
-      loading: true, // Устанавливаем на true для отображения индикатора загрузки
-      orderLimit: 3 // Ограничение на количество отображаемых заказов
+      userName: '',          // Имя пользователя
+      userRole: '',          // Роль пользователя
+      orders: [],            // Список заказов
+      loading: true          // Индикатор загрузки
     };
   },
   computed: {
     limitedOrders() {
-      return this.orders.slice(0, this.orderLimit);
+      return this.orders.slice(0, 3); // Ограничиваем список заказов до 3, если это нужно
     }
   },
-  mounted() {
-    this.fetchUserName(); // Загружаем имя пользователя при загрузке страницы
-    this.fetchOrders(); // Загружаем заказы при загрузке страницы
+  async mounted() {
+    await this.fetchUserData(); // Загружаем данные пользователя
+    await this.fetchOrders();   // Загружаем заказы
   },
   methods: {
-    async fetchUserName() {
+    async fetchUserData() {
       try {
         const response = await fetch('http://localhost:8080/api/user', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-          }
+          },
+          credentials: 'include', // Отправляем куки с запросом
         });
 
+        if (response.status === 401) {
+          this.$router.push({ name: 'home' });
+          return;
+        }
+
         if (!response.ok) {
-          throw new Error('Ошибка при получении имени пользователя');
+          throw new Error('Ошибка при получении данных пользователя');
         }
 
         const data = await response.json();
-        this.userName = data.name; // Сохраняем имя пользователя
+        this.userName = data.name;
+        this.userRole = data.role;
       } catch (error) {
         console.error('Ошибка:', error.message);
-        alert('Не удалось загрузить имя пользователя.');
+        this.$router.push({ name: 'home' });
       }
     },
     async fetchOrders() {
@@ -94,9 +101,8 @@ export default {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            // Добавьте токен авторизации, если требуется
-            // 'Authorization': 'Bearer your-auth-token'
-          }
+          },
+          credentials: 'include', // Отправляем куки с запросом
         });
 
         if (!response.ok) {
@@ -104,20 +110,20 @@ export default {
         }
 
         const data = await response.json();
-        this.orders = data; // Обновляем список заказов с сервера
+        this.orders = data; // Обновляем список заказов
       } catch (error) {
-        console.error('Ошибка:', error.message);
+        console.error('Ошибка при загрузке заказов:', error.message);
         alert('Не удалось загрузить заказы.');
       } finally {
-        this.loading = false; // Выключаем индикатор загрузки после завершения
+        this.loading = false; // Завершаем загрузку
       }
     },
     formatDate(dateString) {
       const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', {year: 'numeric', month: 'long', day: 'numeric'});
+      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
     },
     goToCreateOrder() {
-      this.$router.push({name: 'ClientOrders'});
+      this.$router.push({ name: 'ClientOrders' });
     }
   }
 };

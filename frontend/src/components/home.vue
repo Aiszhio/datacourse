@@ -3,7 +3,7 @@ export default {
   name: 'home',
   data() {
     return {
-      phone: '', // Changed from email to phone
+      phone: '', // Используем телефон вместо email
       password: '',
       errorMessage: ''
     };
@@ -17,9 +17,10 @@ export default {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            phone: this.phone, // Using phone now
+            phone: this.phone, // Используем телефон
             password: this.password
-          })
+          }),
+          credentials: 'include' // Включаем отправку куки
         });
 
         if (!response.ok) {
@@ -27,14 +28,24 @@ export default {
         }
 
         const data = await response.json();
-        const token = data.token;
-        localStorage.setItem('authToken', token);
 
-        // Show an alert on successful login
+        // Получаем роль из данных ответа
+        const role = data.role;
+
+        // Показываем сообщение об успешном входе
         alert('Авторизация прошла успешно!');
 
-        // Redirect to the ClientHome route
-        this.$router.push({ name: 'ClientHome' });
+        // Выполняем маршрутизацию на основе роли
+        if (role === 'admin') {
+          this.$router.push({ name: 'AdminHome' });
+        } else if (role === 'worker') {
+          this.$router.push({ name: 'WorkerDashboard' });
+        } else if (role === 'client') {
+          this.$router.push({ name: 'ClientHome' });
+        } else {
+          throw new Error('Неизвестная роль');
+        }
+
       } catch (error) {
         this.errorMessage = 'Ошибка входа. Проверьте данные и попробуйте снова.';
         console.error(error);

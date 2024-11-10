@@ -66,10 +66,17 @@ func Authorize(db *gorm.DB, client *redis.Client) fiber.Handler {
 		}
 
 		userInfo, err = handlers.GetUserByPhone(client, db, role)
-		fmt.Println(userInfo)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Error retrieving user info",
+			})
+		}
+
+		err = Redis.SetKey(client, "role", role)
+		fmt.Println(Redis.GetKey(client, "role"))
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Error saving role to Redis",
 			})
 		}
 
@@ -80,6 +87,17 @@ func Authorize(db *gorm.DB, client *redis.Client) fiber.Handler {
 			})
 		}
 
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Login successful"})
+		err = SetCookie(client, c)
+		fmt.Println(Redis.GetKey(client, "sessionID"))
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Error saving cookies to Redis",
+			})
+		}
+
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
+			"role":    role,
+			"message": "Login successful",
+		})
 	}
 }

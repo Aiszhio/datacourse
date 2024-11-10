@@ -59,7 +59,7 @@ export default {
   name: 'worker',
   data() {
     return {
-      workerName: 'Имя Сотрудника', // Имя сотрудника
+      workerName: 'Имя Сотрудника', // Начальное значение для имени сотрудника
       workerNameInput: '', // Поле для ввода ФИО в модальном окне
       orders: [
         {
@@ -84,7 +84,32 @@ export default {
       return this.orders.slice(0, this.orderLimit);
     }
   },
+  mounted() {
+    this.fetchWorkerName(); // Загружаем имя сотрудника при монтировании компонента
+  },
   methods: {
+    async fetchWorkerName() {
+      try {
+        const response = await fetch('http://localhost:8080/api/user', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer your-auth-token' // Замените на реальный токен
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при получении имени сотрудника');
+        }
+
+        const data = await response.json();
+        this.workerName = data.name; // Обновляем workerName с полученным именем
+
+      } catch (error) {
+        console.error('Ошибка при получении имени сотрудника:', error.message);
+        alert('Не удалось загрузить имя сотрудника.');
+      }
+    },
     openTakeOrderModal(order) {
       this.currentOrder = order;
       this.showTakeOrderModal = true;
@@ -106,7 +131,7 @@ export default {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer your-auth-token'
           },
-          body: JSON.stringify({employeeName: this.workerNameInput})
+          body: JSON.stringify({ employeeName: this.workerNameInput })
         });
 
         if (!response.ok) {
@@ -115,7 +140,7 @@ export default {
 
         alert(`Заказ #${this.currentOrder.OrderID} взят на исполнение`);
         this.currentOrder.isAssigned = true;
-        this.currentOrder.EmployeeName = this.workerNameInput; // Обновляем имя сотрудника
+        this.currentOrder.EmployeeName = this.workerNameInput;
         this.closeTakeOrderModal();
 
       } catch (error) {
@@ -139,7 +164,7 @@ export default {
 
         alert(`Вы отказались от заказа #${order.OrderID}`);
         order.isAssigned = false;
-        order.EmployeeName = null; // Убираем назначение сотрудника локально
+        order.EmployeeName = null;
 
       } catch (error) {
         console.error('Ошибка при отказе от заказа:', error.message);
@@ -148,7 +173,7 @@ export default {
     },
     formatDate(dateString) {
       const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', {year: 'numeric', month: 'long', day: 'numeric'});
+      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
     }
   }
 };
