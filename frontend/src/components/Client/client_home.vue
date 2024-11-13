@@ -102,7 +102,7 @@ export default {
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include', // Отправляем куки с запросом
+          credentials: 'include', // Send cookies with request
         });
 
         if (!response.ok) {
@@ -110,15 +110,17 @@ export default {
         }
 
         const data = await response.json();
-        this.orders = data; // Обновляем список заказов
+        console.log('Received orders:', data); // Log the data structure to debug
+        this.orders = data; // Populate the orders array with the API response
       } catch (error) {
         console.error('Ошибка при загрузке заказов:', error.message);
         alert('Не удалось загрузить заказы.');
       } finally {
-        this.loading = false; // Завершаем загрузку
+        this.loading = false; // Stop loading indicator
       }
     },
     formatDate(dateString) {
+      if (!dateString) return "Дата не указана";
       const date = new Date(dateString);
       return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
     },

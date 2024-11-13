@@ -31,6 +31,10 @@ const router = createRouter({
 
 // Добавляем глобальный перехватчик маршрутов
 router.beforeEach(async (to, from, next) => {
+    if (to.path === '/') {
+        return next(); // Пропускаем проверку роли для главной страницы
+    }
+
     try {
         // Запрашиваем роль пользователя из Redis через API
         const response = await axios.get('http://localhost:8080/api/CheckRole', { withCredentials: true });
@@ -38,11 +42,11 @@ router.beforeEach(async (to, from, next) => {
 
         // Логика маршрутов в зависимости от роли
         if (to.path.startsWith('/admin') && userRole !== 'admin') {
-            next({ name: 'home' }); // Перенаправляем на главную страницу, если не администратор
+            next({ name: 'home' });
         } else if (to.path.startsWith('/worker') && userRole !== 'worker') {
-            next({ name: 'home' }); // Перенаправляем на главную страницу, если не сотрудник
+            next({ name: 'home' });
         } else if (to.path.startsWith('/client') && userRole !== 'client') {
-            next({ name: 'home' }); // Перенаправляем на главную страницу, если не клиент
+            next({ name: 'home' });
         } else {
             next(); // Разрешаем доступ к маршруту
         }
