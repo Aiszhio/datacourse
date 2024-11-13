@@ -10,13 +10,13 @@ import (
 	"time"
 )
 
-type Order struct {
-	OrderID     int       `json:"OrderID"`
-	ClientID    int       `json:"ClientID"`
-	EmployeeID  int       `json:"EmployeeID"`
-	ServiceName string    `json:"ServiceName"`
-	OrderDate   time.Time `json:"OrderDate"`
-	ReceiptDate time.Time `json:"ReceiptDate"`
+type OrderWithEmployeeName struct {
+	OrderID      int       `json:"order_id"`
+	ClientID     int       `json:"client_id"`
+	EmployeeName string    `json:"employee_name"`
+	ServiceName  string    `json:"service_name"`
+	OrderDate    time.Time `json:"order_date"`
+	ReceiptDate  time.Time `json:"receipt_date"`
 }
 
 func ClientHomeApi(db *gorm.DB, client *redis.Client) fiber.Handler {
@@ -54,9 +54,13 @@ func ClientHomeApi(db *gorm.DB, client *redis.Client) fiber.Handler {
 
 		fmt.Println("Client ID retrieved from Redis:", clientID)
 
-		var orders []Order
-		fmt.Println("Fetching orders for client ID:", clientID)
-		if err = db.Where("client_id = ?", clientID).Find(&orders).Error; err != nil {
+		var orders []OrderWithEmployeeName
+
+		if err = db.Table("orders").
+			Select("orders.order_id, orders.client_id, employees.full_name as employee_name, orders.service_name, orders.order_date, orders.receipt_date").
+			Joins("left join employees on orders.employee_id = employees.employee_id").
+			Where("orders.client_id = ?", clientID).
+			Find(&orders).Error; err != nil {
 			fmt.Println("Error fetching orders from database:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Error fetching orders from database",

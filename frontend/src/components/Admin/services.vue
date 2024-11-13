@@ -127,30 +127,6 @@ export default {
       </table>
     </div>
 
-    <!-- Таблица с требованиями к услугам -->
-<!--    <div class="table-section">-->
-<!--      <h3>Требования к услугам</h3>-->
-<!--      <button @click="openAddRequirementModal" class="btn">Добавить требование</button>-->
-<!--      <table class="data-table">-->
-<!--        <thead>-->
-<!--        <tr>-->
-<!--          <th>Номер услуги</th>-->
-<!--          <th>Номер оборудования</th>-->
-<!--          <th>Действия</th>-->
-<!--        </tr>-->
-<!--        </thead>-->
-<!--        <tbody>-->
-<!--        <tr v-for="requirement in requirements" :key="requirement.id">-->
-<!--          <td>{{ requirement.serviceId }}</td>-->
-<!--          <td>{{ requirement.equipmentId }}</td>-->
-<!--          <td>-->
-<!--            <button @click="deleteRequirement(requirement.id)" class="btn danger">Удалить</button>-->
-<!--          </td>-->
-<!--        </tr>-->
-<!--        </tbody>-->
-<!--      </table>-->
-<!--    </div>-->
-
     <!-- Таблица с оборудованием -->
     <div class="table-section">
       <h3>Оборудование</h3>
@@ -184,28 +160,29 @@ export default {
         <h3>{{ modalTitle }}</h3>
         <form @submit.prevent="saveItem">
           <div v-if="modalType === 'service'">
-            <label>Название услуги:</label>
-            <input v-model="currentItem.name" required />
-            <label>Стоимость:</label>
-            <input type="number" v-model="currentItem.price" required />
+            <label class="form-label">Название услуги:</label>
+            <input v-model="currentItem.name" required class="form-input" />
+            <label class="form-label">Стоимость:</label>
+            <input type="number" v-model="currentItem.price" required class="form-input" />
           </div>
           <div v-if="modalType === 'requirement'">
-            <label>Номер услуги:</label>
-            <input type="number" v-model="currentItem.serviceId" required />
-            <label>Номер оборудования:</label>
-            <input type="number" v-model="currentItem.equipmentId" required />
+            <label class="form-label">Номер услуги:</label>
+            <input type="number" v-model="currentItem.serviceId" required class="form-input" />
+            <label class="form-label">Номер оборудования:</label>
+            <input type="number" v-model="currentItem.equipmentId" required class="form-input" />
           </div>
           <div v-if="modalType === 'equipment'">
-            <label>Марка:</label>
-            <input v-model="currentItem.brand" required />
-            <label>Модель:</label>
-            <input v-model="currentItem.model" required />
+            <label class="form-label">Марка:</label>
+            <input v-model="currentItem.brand" required class="form-input" />
+            <label class="form-label">Модель:</label>
+            <input v-model="currentItem.model" required class="form-input" />
           </div>
           <button type="submit" class="btn">Сохранить</button>
           <button @click="closeModal" class="btn danger">Отмена</button>
         </form>
       </div>
     </div>
+
     <!-- Панель навигации с карточками -->
     <div class="card-panel">
       <div class="card" @click="goToAdminHome">
@@ -229,7 +206,6 @@ export default {
         <p>Управление бронированиями</p>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -276,7 +252,8 @@ export default {
   border-collapse: collapse;
 }
 
-.data-table th, .data-table td {
+.data-table th,
+.data-table td {
   padding: 10px;
   border: 1px solid #ddd;
   text-align: left;
@@ -301,6 +278,14 @@ export default {
   background-color: #f44336;
 }
 
+.btn:hover {
+  background-color: #45a049;
+}
+
+.btn.danger:hover {
+  background-color: #e53935;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -320,4 +305,26 @@ export default {
   max-width: 400px;
   width: 100%;
 }
+
+.form-label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.form-input {
+  width: 90%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  transition: border-color 0.3s;
+}
+
+.form-input:focus {
+  border-color: #4CAF50;
+  outline: none;
+}
 </style>
+

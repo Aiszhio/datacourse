@@ -13,21 +13,19 @@
           <thead>
           <tr>
             <th>Номер заказа</th>
-            <th>Номер клиента</th>
-            <th>Номер сотрудника</th>
+            <th>Имя фотографа</th>
             <th>Название услуги</th>
             <th>Дата оформления</th>
             <th>Дата получения</th>
           </tr>
           </thead>
           <tbody>
-          <tr v-for="order in limitedOrders" :key="order.OrderID">
-            <td>{{ order.OrderID }}</td>
-            <td>{{ order.ClientID }}</td>
-            <td>{{ order.EmployeeID || 'Не назначен' }}</td>
-            <td>{{ order.ServiceName }}</td>
-            <td>{{ formatDate(order.OrderDate) }}</td>
-            <td>{{ formatDate(order.ReceiptDate) }}</td>
+          <tr v-for="order in limitedOrders" :key="order.order_id">
+            <td>{{ order.order_id }}</td>
+            <td>{{ order.employee_name || 'Не назначен' }}</td>
+            <td>{{ order.service_name }}</td>
+            <td>{{ formatDate(order.order_date) }}</td>
+            <td>{{ formatDate(order.receipt_date) }}</td>
           </tr>
           </tbody>
         </table>
@@ -52,20 +50,20 @@ export default {
   name: 'User',
   data() {
     return {
-      userName: '',          // Имя пользователя
-      userRole: '',          // Роль пользователя
-      orders: [],            // Список заказов
-      loading: true          // Индикатор загрузки
+      userName: '', // User name
+      userRole: '', // User role
+      orders: [],   // Orders list
+      loading: true // Loading indicator
     };
   },
   computed: {
     limitedOrders() {
-      return this.orders.slice(0, 3); // Ограничиваем список заказов до 3, если это нужно
+      return this.orders.slice(0, 3); // Limit orders display to 3
     }
   },
   async mounted() {
-    await this.fetchUserData(); // Загружаем данные пользователя
-    await this.fetchOrders();   // Загружаем заказы
+    await this.fetchUserData();
+    await this.fetchOrders();
   },
   methods: {
     async fetchUserData() {
@@ -75,7 +73,7 @@ export default {
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include', // Отправляем куки с запросом
+          credentials: 'include',
         });
 
         if (response.status === 401) {
@@ -102,7 +100,7 @@ export default {
           headers: {
             'Content-Type': 'application/json',
           },
-          credentials: 'include', // Send cookies with request
+          credentials: 'include',
         });
 
         if (!response.ok) {
@@ -110,13 +108,12 @@ export default {
         }
 
         const data = await response.json();
-        console.log('Received orders:', data); // Log the data structure to debug
-        this.orders = data; // Populate the orders array with the API response
+        this.orders = data;
       } catch (error) {
         console.error('Ошибка при загрузке заказов:', error.message);
         alert('Не удалось загрузить заказы.');
       } finally {
-        this.loading = false; // Stop loading indicator
+        this.loading = false;
       }
     },
     formatDate(dateString) {
