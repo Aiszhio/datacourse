@@ -43,14 +43,14 @@ export default {
   name: 'AdminDashboard',
   data() {
     return {
-      adminName: 'Администратор', // Начальное значение для имени администратора
+      adminName: '', // Имя администратора
       currentDate: new Date().toLocaleDateString('ru-RU', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       })
     };
   },
-  mounted() {
-    this.fetchAdminName(); // Загружаем имя администратора при монтировании компонента
+  async mounted() {
+    await this.fetchAdminName(); // Загружаем имя администратора при монтировании компонента
   },
   methods: {
     async fetchAdminName() {
@@ -58,9 +58,9 @@ export default {
         const response = await fetch('http://localhost:8080/api/user', {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer your-auth-token' // Замените на реальный токен
-          }
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include' // Отправляем куки с запросом
         });
 
         if (!response.ok) {

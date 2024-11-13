@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import axios from 'axios';
 import home from './components/home.vue';
 import User from './components/Client/client_home.vue';
 import ClientOrders from "@/components/Client/client_orders.vue";
@@ -26,6 +27,29 @@ const routes = [
 const router = createRouter({
     history: createWebHistory(),
     routes,
+});
+
+// Добавляем глобальный перехватчик маршрутов
+router.beforeEach(async (to, from, next) => {
+    try {
+        // Запрашиваем роль пользователя из Redis через API
+        const response = await axios.get('http://localhost:8080/api/CheckRole', { withCredentials: true });
+        const userRole = response.data.role;
+
+        // Логика маршрутов в зависимости от роли
+        if (to.path.startsWith('/admin') && userRole !== 'admin') {
+            next({ name: 'home' }); // Перенаправляем на главную страницу, если не администратор
+        } else if (to.path.startsWith('/worker') && userRole !== 'worker') {
+            next({ name: 'home' }); // Перенаправляем на главную страницу, если не сотрудник
+        } else if (to.path.startsWith('/client') && userRole !== 'client') {
+            next({ name: 'home' }); // Перенаправляем на главную страницу, если не клиент
+        } else {
+            next(); // Разрешаем доступ к маршруту
+        }
+    } catch (error) {
+        console.error('Ошибка при проверке роли:', error);
+        next({ name: 'home' }); // Перенаправляем на главную при ошибке
+    }
 });
 
 export default router;

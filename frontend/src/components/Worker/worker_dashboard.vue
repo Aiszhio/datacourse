@@ -9,7 +9,7 @@
       <div v-if="loading" class="loading">Загрузка заказов...</div>
 
       <!-- Таблица заказов -->
-      <table class="orders-table">
+      <table v-if="!loading && limitedOrders.length > 0" class="orders-table">
         <thead>
         <tr>
           <th>Номер заказа</th>
@@ -22,7 +22,7 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-if="!loading && limitedOrders.length > 0" v-for="order in limitedOrders" :key="order.OrderID">
+        <tr v-for="order in limitedOrders" :key="order.OrderID">
           <td>{{ order.OrderID }}</td>
           <td>{{ order.ClientID }}</td>
           <td>{{ order.EmployeeName || "Не назначен" }}</td>
@@ -34,11 +34,9 @@
             <button v-else @click="releaseOrder(order)" class="btn danger">Отказаться</button>
           </td>
         </tr>
-        <tr v-else>
-          <td colspan="7" class="no-orders">Нет доступных заказов</td>
-        </tr>
         </tbody>
       </table>
+      <div v-if="!loading && limitedOrders.length === 0" class="no-orders">Нет доступных заказов</div>
     </div>
 
     <!-- Модальное окно для взятия заказа -->
@@ -56,27 +54,16 @@
 
 <script>
 export default {
-  name: 'worker',
+  name: 'WorkerDashboard',
   data() {
     return {
-      workerName: 'Имя Сотрудника', // Начальное значение для имени сотрудника
-      workerNameInput: '', // Поле для ввода ФИО в модальном окне
-      orders: [
-        {
-          OrderID: 123,
-          ClientID: 456,
-          EmployeeID: null, // Пока заказ не назначен сотруднику
-          EmployeeName: null,
-          ServiceName: 'Фотосессия',
-          OrderDate: '2024-10-01',
-          ReceiveDate: '2024-10-10',
-          isAssigned: false // Флаг, указывающий, что заказ пока не взят
-        }
-      ],
-      loading: false, // Флаг загрузки заказов
-      orderLimit: 3, // Количество отображаемых заказов
-      showTakeOrderModal: false, // Показ модального окна для взятия заказа
-      currentOrder: null // Текущий выбранный заказ для взятия
+      workerName: '',              // Имя сотрудника
+      workerNameInput: '',         // Поле для ввода ФИО в модальном окне
+      orders: [],                  // Список заказов
+      loading: true,               // Индикатор загрузки заказов
+      orderLimit: 3,               // Лимит отображаемых заказов
+      showTakeOrderModal: false,   // Показ модального окна
+      currentOrder: null           // Текущий выбранный заказ
     };
   },
   computed: {
@@ -84,18 +71,19 @@ export default {
       return this.orders.slice(0, this.orderLimit);
     }
   },
-  mounted() {
-    this.fetchWorkerName(); // Загружаем имя сотрудника при монтировании компонента
+  async mounted() {
+    await this.fetchWorkerData();
+    await this.fetchOrders();
   },
   methods: {
-    async fetchWorkerName() {
+    async fetchWorkerData() {
       try {
         const response = await fetch('http://localhost:8080/api/user', {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer your-auth-token' // Замените на реальный токен
-          }
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
         });
 
         if (!response.ok) {
@@ -103,11 +91,33 @@ export default {
         }
 
         const data = await response.json();
-        this.workerName = data.name; // Обновляем workerName с полученным именем
-
+        this.workerName = data.name;
       } catch (error) {
         console.error('Ошибка при получении имени сотрудника:', error.message);
         alert('Не удалось загрузить имя сотрудника.');
+      }
+    },
+    async fetchOrders() {
+      try {
+        const response = await fetch('http://localhost:8080/api/orders', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Ошибка при получении заказов');
+        }
+
+        const data = await response.json();
+        this.orders = data;
+      } catch (error) {
+        console.error('Ошибка при загрузке заказов:', error.message);
+        alert('Не удалось загрузить заказы.');
+      } finally {
+        this.loading = false;
       }
     },
     openTakeOrderModal(order) {
@@ -128,8 +138,7 @@ export default {
         const response = await fetch(`http://localhost:8080/api/orders/${this.currentOrder.OrderID}/assign`, {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer your-auth-token'
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({ employeeName: this.workerNameInput })
         });
@@ -153,8 +162,7 @@ export default {
         const response = await fetch(`http://localhost:8080/api/orders/${order.OrderID}/unassign`, {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer your-auth-token'
+            'Content-Type': 'application/json'
           }
         });
 

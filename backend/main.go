@@ -34,7 +34,7 @@ func main() {
 
 	webApp.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:5173",
-		AllowHeaders:     "Content-Type, Authorization", // Разрешаем Content-Type
+		AllowHeaders:     "Content-Type, Authorization",
 		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
 		AllowCredentials: true,
 	}))
@@ -42,7 +42,8 @@ func main() {
 	webApp.Use(Authentification.SessionMiddleware(rdb))
 
 	webApp.Post("/api/login", Authentification.Authorize(dbu, rdb))
-	webApp.Get("/api/user", handlers.GetUserData(dbu, rdb))
+	webApp.Get("/api/CheckRole", Authentification.CheckUserRole(rdb))
+	webApp.Get("/api/user", handlers.GetUserData(rdb))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))

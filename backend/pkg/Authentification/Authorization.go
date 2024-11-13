@@ -17,10 +17,28 @@ type Customer struct {
 }
 
 func getRoleByPhone(phone, password string, db *gorm.DB, model interface{}, role, idColumn string) (string, error) {
-	if err := db.Where("phone_number = ? AND "+idColumn+" = ?", phone, password).First(model).Error; err == nil {
-		return role, nil
+	if err := db.Where("phone_number = ? AND "+idColumn+" = ?", phone, password).First(model).Error; err != nil {
+		return "", errors.New("not found")
 	}
-	return "", errors.New("not found")
+
+	if role == "client" {
+		return "client", nil
+	}
+
+	var position string
+	err := db.Table("employees").Select("position").Where("phone_number = ? AND position IN ?", phone, []string{"Фотограф", "Администратор"}).Scan(&position).Error
+	if err != nil {
+		return "", err
+	}
+
+	switch position {
+	case "Фотограф":
+		return "worker", nil
+	case "Администратор":
+		return "admin", nil
+	default:
+		return "", errors.New("unknown role")
+	}
 }
 
 func userDefineRole(phone, password string, db *gorm.DB) (string, error) {
