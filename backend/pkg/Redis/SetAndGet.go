@@ -3,19 +3,37 @@ package Redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/redis/go-redis/v9"
+	"log"
 	"time"
 )
 
 func SetKey(client *redis.Client, key, value string) error {
 	ctx := context.Background()
-	return client.Set(ctx, key, value, 30*time.Minute).Err()
+	err := client.Set(ctx, key, value, 30*time.Minute).Err()
+	if err != nil {
+		log.Printf("Error setting key '%s' in Redis: %v", key, err)
+	} else {
+		log.Printf("Successfully set key '%s' in Redis with value '%s'", key, value)
+	}
+	return err
 }
 
 func GetKey(client *redis.Client, key string) (string, error) {
 	ctx := context.Background()
-	return client.Get(ctx, key).Result()
+	value, err := client.Get(ctx, key).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			log.Printf("Key '%s' not found in Redis", key)
+		} else {
+			log.Printf("Error getting key '%s' from Redis: %v", key, err)
+		}
+		return "", err
+	}
+	log.Printf("Successfully retrieved key '%s' from Redis with value '%s'", key, value)
+	return value, nil
 }
 
 func SetMultipleKey(client *redis.Client, key string, values interface{}) error {

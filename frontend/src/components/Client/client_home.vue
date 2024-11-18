@@ -6,13 +6,14 @@
     <!-- Раздел "Ваши заказы" -->
     <div class="orders-section">
       <h3>Ваши заказы</h3>
+
       <div v-if="loading" class="loading">Загрузка ваших заказов...</div>
 
-      <div v-if="!loading && limitedOrders.length > 0" class="order-table">
-        <table>
+      <template v-else>
+        <table v-if="filteredOrders.length" class="order-table">
           <thead>
           <tr>
-            <th>Номер заказа</th>
+            <th>№</th>
             <th>Имя фотографа</th>
             <th>Название услуги</th>
             <th>Дата оформления</th>
@@ -20,8 +21,8 @@
           </tr>
           </thead>
           <tbody>
-          <tr v-for="order in limitedOrders" :key="order.order_id">
-            <td>{{ order.order_id }}</td>
+          <tr v-for="(order, index) in filteredOrders" :key="order.order_id">
+            <td>{{ index + 1 }}</td>
             <td>{{ order.employee_name || 'Не назначен' }}</td>
             <td>{{ order.service_name }}</td>
             <td>{{ formatDate(order.order_date) }}</td>
@@ -29,11 +30,11 @@
           </tr>
           </tbody>
         </table>
-      </div>
 
-      <div v-if="!loading && limitedOrders.length === 0" class="no-orders">
-        У вас нет текущих заказов.
-      </div>
+        <div v-else class="no-orders">
+          У вас нет текущих заказов.
+        </div>
+      </template>
     </div>
 
     <!-- Навигационные кнопки -->
@@ -50,29 +51,36 @@ export default {
   name: 'User',
   data() {
     return {
-      userName: '', // User name
-      userRole: '', // User role
-      orders: [],   // Orders list
-      loading: true // Loading indicator
+      userName: '',     // Имя пользователя
+      userRole: '',     // Роль пользователя
+      orders: [],       // Список всех заказов
+      loading: true     // Индикатор загрузки
     };
   },
   computed: {
-    limitedOrders() {
-      return this.orders.slice(0, 3); // Limit orders display to 3
+    filteredOrders() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Нормализация времени до начала дня
+      return this.orders.filter(order => new Date(order.receipt_date) >= today);
     }
   },
-  async mounted() {
-    await this.fetchUserData();
-    await this.fetchOrders();
+  mounted() {
+    this.initializeData();
   },
   methods: {
+    async initializeData() {
+      try {
+        await Promise.all([this.fetchUserData(), this.fetchOrders()]);
+      } catch (error) {
+        console.error('Ошибка инициализации данных:', error.message);
+        this.$router.push({ name: 'home' });
+      }
+    },
     async fetchUserData() {
       try {
         const response = await fetch('http://localhost:8080/api/user', {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
         });
 
@@ -89,7 +97,7 @@ export default {
         this.userName = data.name;
         this.userRole = data.role;
       } catch (error) {
-        console.error('Ошибка:', error.message);
+        console.error('Ошибка при получении данных пользователя:', error.message);
         this.$router.push({ name: 'home' });
       }
     },
@@ -97,9 +105,7 @@ export default {
       try {
         const response = await fetch('http://localhost:8080/api/orders', {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
         });
 
@@ -111,18 +117,21 @@ export default {
         this.orders = data;
       } catch (error) {
         console.error('Ошибка при загрузке заказов:', error.message);
-        alert('Не удалось загрузить заказы.');
+        alert('Не удалось загрузить историю заказов.');
       } finally {
         this.loading = false;
       }
     },
     formatDate(dateString) {
       if (!dateString) return "Дата не указана";
-      const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+      return new Date(dateString).toLocaleDateString("ru-RU", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
     },
     goToCreateOrder() {
-      this.$router.push({ name: 'ClientOrders' });
+      this.$router.push({ name: "ClientOrders" });
     }
   }
 };
@@ -140,17 +149,14 @@ export default {
 }
 
 .order-table {
-  margin-top: 20px;
-  border-collapse: collapse;
   width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.order-table table {
-  width: 100%;
-}
-
-.order-table th, .order-table td {
+.order-table th,
+.order-table td {
   padding: 12px;
   border: 1px solid #ddd;
   text-align: left;
@@ -161,16 +167,11 @@ export default {
   font-weight: bold;
 }
 
-.loading {
-  text-align: center;
-  color: #555;
-  font-size: 1.2em;
-}
-
+.loading,
 .no-orders {
   text-align: center;
-  color: #999;
   font-size: 1.2em;
+  color: #555;
   margin-top: 20px;
 }
 
@@ -185,7 +186,7 @@ export default {
   background-color: #4CAF50;
   color: white;
   border-radius: 10px;
-  padding: 10px;
+  padding: 15px;
   width: 180px;
   text-align: center;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -198,6 +199,3 @@ export default {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 </style>
-
-
-

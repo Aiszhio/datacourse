@@ -6,22 +6,28 @@
     <div class="orders-section">
       <div v-if="loading" class="loading">Загрузка истории заказов...</div>
 
-      <table v-if="!loading && orders.length > 0" class="order-table">
+      <table v-else-if="pastOrders.length" class="order-table">
         <thead>
         <tr>
+          <th>№</th>
+          <th>Имя фотографа</th>
           <th>Название услуги</th>
           <th>Дата оформления</th>
+          <th>Дата получения</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="order in orders" :key="order.OrderID">
-          <td>{{ order.ServiceName }}</td>
-          <td>{{ formatDate(order.OrderDate) }}</td>
+        <tr v-for="(order, index) in pastOrders" :key="order.order_id">
+          <td>{{ index + 1 }}</td>
+          <td>{{ order.employee_name || 'Не назначен' }}</td>
+          <td>{{ order.service_name }}</td>
+          <td>{{ formatDate(order.order_date) }}</td>
+          <td>{{ formatDate(order.receipt_date) }}</td>
         </tr>
         </tbody>
       </table>
 
-      <div v-if="!loading && orders.length === 0" class="no-orders">
+      <div v-else class="no-orders">
         У вас нет завершенных заказов.
       </div>
     </div>
@@ -32,15 +38,30 @@
       <form @submit.prevent="createOrder">
         <label for="service">Выберите услугу:</label>
         <select v-model="newOrder.service" id="service" required>
-          <option v-for="service in services" :key="service.id" :value="service.name">
-            {{ service.name }}
+          <option v-for="service in services" :key="service.service_id" :value="service.service_id">
+            {{ service.service_name }} — {{ service.price }}₽
           </option>
         </select>
 
         <label for="orderDate">Дата и время оформления:</label>
-        <input type="datetime-local" v-model="newOrder.orderDate" id="orderDate" required />
+        <input
+            type="datetime-local"
+            v-model="newOrder.orderDate"
+            id="orderDate"
+            :min="currentDateTime"
+            required
+        />
 
-        <button type="submit" class="btn">Оформить заказ</button>
+        <div v-if="busyDates.length" class="busy-dates-warning">
+          <p>Выбранная дата занята! Попробуйте другую:</p>
+          <ul>
+            <li v-for="date in busyDates" :key="date">{{ formatDate(date) }}</li>
+          </ul>
+        </div>
+
+        <button type="submit" class="btn" :disabled="busyDates.length">
+          Оформить заказ
+        </button>
       </form>
     </div>
 
@@ -58,93 +79,110 @@ export default {
   name: 'ClientOrders',
   data() {
     return {
-      orders: [], // Список завершенных заказов клиента
-      loading: false, // Флаг для индикации загрузки
-      newOrder: { // Данные для нового заказа
+      orders: [],
+      loading: false,
+      newOrder: {
         service: '',
         orderDate: '',
       },
-      services: [] // Доступные услуги
+      services: [],
+      busyDates: [],
+      currentDateTime: '',
     };
   },
+  computed: {
+    pastOrders() {
+      const now = new Date();
+      return this.orders.filter(order => new Date(order.receipt_date) < now);
+    },
+  },
   mounted() {
-    this.fetchOrders(); // Загружаем историю заказов при загрузке страницы
-    this.fetchServices(); // Загружаем доступные услуги для формы
+    this.updateCurrentDateTime();
+    this.fetchData('orders');
+    this.fetchData('services');
+    this.interval = setInterval(this.updateCurrentDateTime, 60000);
+  },
+  beforeUnmount() {
+    clearInterval(this.interval);
   },
   methods: {
-    async fetchOrders() {
-      this.loading = true;
-      try {
-        const response = await fetch('http://localhost:8080/api/client/orders/history', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer your-auth-token'
-          }
-        });
-
-        if (!response.ok) throw new Error('Ошибка при получении истории заказов');
-        this.orders = await response.json();
-      } catch (error) {
-        console.error('Ошибка:', error.message);
-        alert('Не удалось загрузить историю заказов.');
-      } finally {
-        this.loading = false;
-      }
+    updateCurrentDateTime() {
+      const now = new Date();
+      this.currentDateTime = now.toISOString().slice(0, 16);
     },
-    async fetchServices() {
+    async fetchData(type) {
+      this.loading = type === 'orders';
       try {
-        const response = await fetch('http://localhost:8080/api/services', {
+        const endpoint = type === 'orders' ? 'orders' : 'services';
+        const response = await fetch(`http://localhost:8080/api/${endpoint}`, {
           method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
         });
 
-        if (!response.ok) throw new Error('Ошибка при получении списка услуг');
-        this.services = await response.json();
+        if (!response.ok) throw new Error(`Ошибка при получении ${type === 'orders' ? 'заказов' : 'услуг'}`);
+
+        const data = await response.json();
+        this[type] = data;
       } catch (error) {
-        console.error('Ошибка:', error.message);
-        alert('Не удалось загрузить список услуг.');
+        console.error("Ошибка:", error.message);
+        alert(`Не удалось загрузить ${type === 'orders' ? 'историю заказов' : 'список услуг'}.`);
+      } finally {
+        if (type === 'orders') this.loading = false;
       }
     },
     async createOrder() {
-      if (!this.newOrder.service || !this.newOrder.orderDate) {
-        alert('Пожалуйста, заполните все поля.');
+      const { service, orderDate } = this.newOrder;
+      if (!service || !orderDate) {
+        alert("Пожалуйста, заполните все поля.");
         return;
       }
 
       try {
-        const response = await fetch('http://localhost:8080/api/client/orders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer your-auth-token'
-          },
-          body: JSON.stringify(this.newOrder)
+        const payload = {
+          service,
+          orderDate: new Date(orderDate).toISOString(),
+        };
+
+        const response = await fetch("http://localhost:8080/api/createOrder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
         });
 
-        if (!response.ok) throw new Error('Ошибка при создании заказа');
-        alert('Заказ успешно создан!');
-        this.newOrder = { service: '', orderDate: '' };
-        this.fetchOrders();
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Не удалось создать заказ.");
+        }
+
+        alert("Заказ успешно создан!");
+        this.resetForm();
+        this.fetchData('orders');
       } catch (error) {
-        console.error('Ошибка:', error.message);
-        alert('Не удалось создать заказ.');
+        console.error("Ошибка при создании заказа:", error.message);
+        alert(error.message || "Не удалось создать заказ.");
       }
     },
+    resetForm() {
+      this.newOrder = { service: '', orderDate: '' };
+      this.busyDates = [];
+    },
     formatDate(dateString) {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      if (!dateString) return "Дата не указана";
+      return new Date(dateString).toLocaleString("ru-RU", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     },
     goToHome() {
-      this.$router.push({ name: 'ClientHome' });
+      this.$router.push({ name: "ClientHome" });
     },
-  }
+  },
 };
 </script>
 
@@ -155,7 +193,8 @@ export default {
   max-width: 900px;
 }
 
-.orders-section, .new-order-section {
+.orders-section,
+.new-order-section {
   background-color: #f9f9f9;
   border-radius: 10px;
   padding: 20px;
@@ -168,7 +207,8 @@ export default {
   border-collapse: collapse;
 }
 
-.order-table th, .order-table td {
+.order-table th,
+.order-table td {
   padding: 12px;
   border: 1px solid #ddd;
   text-align: left;
@@ -179,7 +219,8 @@ export default {
   font-weight: bold;
 }
 
-.loading, .no-orders {
+.loading,
+.no-orders {
   text-align: center;
   font-size: 1.2em;
   color: #555;
@@ -191,7 +232,8 @@ form label {
   margin-top: 10px;
 }
 
-form input, form select {
+form input,
+form select {
   padding: 10px;
   margin-top: 5px;
   margin-bottom: 15px;
@@ -225,7 +267,7 @@ form input, form select {
   background-color: #4CAF50;
   color: white;
   border-radius: 10px;
-  padding: 5px;
+  padding: 15px;
   width: 180px;
   text-align: center;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -236,5 +278,15 @@ form input, form select {
 .card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.busy-dates-warning {
+  color: red;
+  margin-top: 10px;
+}
+
+.busy-dates-warning ul {
+  list-style-type: disc;
+  margin-left: 20px;
 }
 </style>

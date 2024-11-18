@@ -44,7 +44,9 @@ func main() {
 	webApp.Post("/api/login", Authentification.Authorize(dbu, rdb))
 	webApp.Get("/api/CheckRole", Authentification.CheckUserRole(rdb))
 	webApp.Get("/api/user", handlers.GetUserData(rdb))
-	webApp.Get("/api/orders", handlers.ClientHomeApi(dbu, rdb))
+	webApp.Get("/api/orders", handlers.ClientOrdersApi(dbu, rdb))
+	webApp.Get("/api/services", handlers.GetServices(dbu))
+	webApp.Post("/api/createOrder", handlers.CreateOrder(dbu, rdb))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))
