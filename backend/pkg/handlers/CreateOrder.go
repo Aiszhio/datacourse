@@ -34,14 +34,14 @@ func CreateOrder(db *gorm.DB, client *redis.Client) fiber.Handler {
 			})
 		}
 
-		clientMapJSON, err := Redis.GetMultipleKey(client, "UserInfo")
+		clientMap, err := Redis.GetMultipleKey(client, "UserInfo")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": err.Error(),
 			})
 		}
 
-		clientID, ok := clientMapJSON["client_id"]
+		clientID, ok := clientMap["client_id"]
 		if !ok {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Invalid client ID",

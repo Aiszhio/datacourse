@@ -3,51 +3,74 @@
     <h2>Панель фотографа</h2>
     <h3>Добро пожаловать, {{ workerName }}!</h3>
 
-    <!-- Список текущих заказов -->
+    <!-- Раздел "Предстоящие заказы" -->
     <div class="orders-section">
-      <h3>Заказы</h3>
+      <h3>Предстоящие заказы</h3>
       <div v-if="loading" class="loading">Загрузка заказов...</div>
 
-      <!-- Таблица заказов -->
-      <table v-if="!loading && limitedOrders.length > 0" class="orders-table">
+      <table v-else-if="upcomingOrders.length > 0" class="orders-table">
         <thead>
         <tr>
-          <th>Номер заказа</th>
-          <th>Номер клиента</th>
-          <th>Номер сотрудника</th>
+          <th>№</th>
+          <th>Имя клиента</th>
           <th>Название услуги</th>
           <th>Дата оформления</th>
           <th>Дата получения</th>
-          <th>Действия</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="order in limitedOrders" :key="order.OrderID">
-          <td>{{ order.OrderID }}</td>
-          <td>{{ order.ClientID }}</td>
-          <td>{{ order.EmployeeName || "Не назначен" }}</td>
+        <tr v-for="(order, index) in displayedUpcomingOrders" :key="order.OrderID">
+          <td>{{ index + 1 }}</td>
+          <td>{{ order.ClientName }}</td>
           <td>{{ order.ServiceName }}</td>
           <td>{{ formatDate(order.OrderDate) }}</td>
-          <td>{{ formatDate(order.ReceiveDate) }}</td>
-          <td>
-            <button v-if="!order.isAssigned" @click="openTakeOrderModal(order)" class="btn">Взять</button>
-            <button v-else @click="releaseOrder(order)" class="btn danger">Отказаться</button>
-          </td>
+          <td>{{ formatDate(order.ReceiptDate) }}</td>
         </tr>
         </tbody>
       </table>
-      <div v-if="!loading && limitedOrders.length === 0" class="no-orders">Нет доступных заказов</div>
+      <div v-else class="no-orders">Нет предстоящих заказов</div>
+
+      <!-- Кнопка "Показать ещё" для предстоящих заказов -->
+      <button
+          v-if="canLoadMoreUpcoming"
+          @click="loadMoreUpcoming"
+          class="btn show-more-btn">
+        Показать ещё
+      </button>
     </div>
 
-    <!-- Модальное окно для взятия заказа -->
-    <div v-if="showTakeOrderModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Оформление заказа</h3>
-        <label for="workerNameInput">ФИО сотрудника</label>
-        <input id="workerNameInput" v-model="workerNameInput" class="input" placeholder="Введите ФИО" required />
-        <button @click="confirmTakeOrder" class="btn">Подтвердить</button>
-        <button @click="closeTakeOrderModal" class="btn danger">Отмена</button>
-      </div>
+    <!-- Раздел "История выполненных заказов" -->
+    <div class="orders-section">
+      <h3>История выполненных заказов</h3>
+      <table v-if="completedOrders.length > 0" class="orders-table">
+        <thead>
+        <tr>
+          <th>№</th>
+          <th>Имя клиента</th>
+          <th>Название услуги</th>
+          <th>Дата оформления</th>
+          <th>Дата получения</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="(order, index) in displayedCompletedOrders" :key="order.OrderID">
+          <td>{{ index + 1 }}</td>
+          <td>{{ order.ClientName }}</td>
+          <td>{{ order.ServiceName }}</td>
+          <td>{{ formatDate(order.OrderDate) }}</td>
+          <td>{{ formatDate(order.ReceiptDate) }}</td>
+        </tr>
+        </tbody>
+      </table>
+      <div v-else class="no-orders">Нет выполненных заказов</div>
+
+      <!-- Кнопка "Показать ещё" для истории заказов -->
+      <button
+          v-if="canLoadMoreCompleted"
+          @click="loadMoreCompleted"
+          class="btn show-more-btn">
+        Показать ещё
+      </button>
     </div>
   </div>
 </template>
@@ -57,18 +80,41 @@ export default {
   name: 'WorkerDashboard',
   data() {
     return {
-      workerName: '',              // Имя сотрудника
-      workerNameInput: '',         // Поле для ввода ФИО в модальном окне
-      orders: [],                  // Список заказов
-      loading: true,               // Индикатор загрузки заказов
-      orderLimit: 3,               // Лимит отображаемых заказов
-      showTakeOrderModal: false,   // Показ модального окна
-      currentOrder: null           // Текущий выбранный заказ
+      workerName: '',      // Имя сотрудника
+      orders: [],          // Список заказов
+      loading: true,       // Индикатор загрузки заказов
+      displayCountUpcoming: 10,  // Количество отображаемых предстоящих заказов
+      displayCountCompleted: 10, // Количество отображаемых выполненных заказов
     };
   },
   computed: {
-    limitedOrders() {
-      return this.orders.slice(0, this.orderLimit);
+    // Фильтрация предстоящих заказов
+    upcomingOrders() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Нормализация времени до начала дня
+      return this.orders.filter(order => new Date(order.ReceiptDate) >= today);
+    },
+    // Фильтрация выполненных заказов
+    completedOrders() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return this.orders.filter(order => new Date(order.ReceiptDate) < today);
+    },
+    // Отображаемые предстоящие заказы с учётом пагинации
+    displayedUpcomingOrders() {
+      return this.upcomingOrders.slice(0, this.displayCountUpcoming);
+    },
+    // Отображаемые выполненные заказы с учётом пагинации
+    displayedCompletedOrders() {
+      return this.completedOrders.slice(0, this.displayCountCompleted);
+    },
+    // Проверка, можно ли загрузить ещё предстоящие заказы
+    canLoadMoreUpcoming() {
+      return this.displayCountUpcoming < this.upcomingOrders.length;
+    },
+    // Проверка, можно ли загрузить ещё выполненные заказы
+    canLoadMoreCompleted() {
+      return this.displayCountCompleted < this.completedOrders.length;
     }
   },
   async mounted() {
@@ -76,6 +122,7 @@ export default {
     await this.fetchOrders();
   },
   methods: {
+    // Получение данных сотрудника
     async fetchWorkerData() {
       try {
         const response = await fetch('http://localhost:8080/api/user', {
@@ -97,6 +144,7 @@ export default {
         alert('Не удалось загрузить имя сотрудника.');
       }
     },
+    // Получение заказов
     async fetchOrders() {
       try {
         const response = await fetch('http://localhost:8080/api/orders', {
@@ -112,7 +160,18 @@ export default {
         }
 
         const data = await response.json();
-        this.orders = data;
+        console.log("Полученные заказы:", data); // Логирование данных для отладки
+
+        // Преобразование полей из snake_case в PascalCase
+        this.orders = data.map(order => ({
+          OrderID: order.order_id,
+          ClientName: order.client_name,
+          ServiceName: order.service_name,
+          OrderDate: order.order_date,
+          ReceiptDate: order.receipt_date
+        }));
+
+        console.log("Преобразованные заказы:", this.orders); // Дополнительное логирование
       } catch (error) {
         console.error('Ошибка при загрузке заказов:', error.message);
         alert('Не удалось загрузить заказы.');
@@ -120,68 +179,19 @@ export default {
         this.loading = false;
       }
     },
-    openTakeOrderModal(order) {
-      this.currentOrder = order;
-      this.showTakeOrderModal = true;
-    },
-    closeTakeOrderModal() {
-      this.workerNameInput = '';
-      this.showTakeOrderModal = false;
-    },
-    async confirmTakeOrder() {
-      if (!this.workerNameInput) {
-        alert('Пожалуйста, введите ФИО');
-        return;
-      }
-
-      try {
-        const response = await fetch(`http://localhost:8080/api/orders/${this.currentOrder.OrderID}/assign`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ employeeName: this.workerNameInput })
-        });
-
-        if (!response.ok) {
-          throw new Error('Ошибка при взятии заказа');
-        }
-
-        alert(`Заказ #${this.currentOrder.OrderID} взят на исполнение`);
-        this.currentOrder.isAssigned = true;
-        this.currentOrder.EmployeeName = this.workerNameInput;
-        this.closeTakeOrderModal();
-
-      } catch (error) {
-        console.error('Ошибка при взятии заказа:', error.message);
-        alert('Не удалось взять заказ.');
-      }
-    },
-    async releaseOrder(order) {
-      try {
-        const response = await fetch(`http://localhost:8080/api/orders/${order.OrderID}/unassign`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Ошибка при отказе от заказа');
-        }
-
-        alert(`Вы отказались от заказа #${order.OrderID}`);
-        order.isAssigned = false;
-        order.EmployeeName = null;
-
-      } catch (error) {
-        console.error('Ошибка при отказе от заказа:', error.message);
-        alert('Не удалось отказаться от заказа.');
-      }
-    },
+    // Форматирование даты с использованием встроенных средств JavaScript
     formatDate(dateString) {
+      const options = {year: 'numeric', month: 'long', day: 'numeric'};
       const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+      return date.toLocaleDateString('ru-RU', options);
+    },
+    // Загрузка дополнительных предстоящих заказов
+    loadMoreUpcoming() {
+      this.displayCountUpcoming += 10;
+    },
+    // Загрузка дополнительных выполненных заказов
+    loadMoreCompleted() {
+      this.displayCountCompleted += 10;
     }
   }
 };
@@ -192,93 +202,79 @@ export default {
   padding: 20px;
   margin: 0 auto;
   max-width: 900px;
+  max-height: 100vh;
+  background-color: #ffffff;
+  border-radius: 10px;
 }
 
 .orders-section {
   background-color: #f9f9f9;
   padding: 20px;
+  margin: 20px 0;
   border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.orders-section h3 {
+  margin-bottom: 15px;
+  color: #333333;
 }
 
 .orders-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
 }
 
 .orders-table th,
 .orders-table td {
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid #dddddd;
   text-align: left;
 }
 
 .orders-table th {
+  background-color: #eaeaea;
+  font-weight: bold;
+  color: #555555;
+}
+
+.orders-table tbody tr:nth-child(even) {
   background-color: #f2f2f2;
 }
 
 .no-orders {
   text-align: center;
-  color: #999;
+  color: #888888;
+  font-style: italic;
+  margin-top: 10px;
+}
+
+.loading {
+  text-align: center;
+  color: #555555;
+  font-size: 1.2em;
+  margin-top: 10px;
 }
 
 .btn {
   background-color: #4CAF50;
   color: white;
-  padding: 10px;
+  padding: 10px 16px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
   font-size: 1em;
   transition: background-color 0.3s ease;
-  margin: 5px;
+  margin: 15px auto 0;
+  display: block;
 }
 
 .btn:hover {
   background-color: #45a049;
 }
 
-.btn.danger {
-  background-color: #f44336;
-}
-
-.btn.danger:hover {
-  background-color: #d32f2f;
-}
-
-.loading {
-  text-align: center;
-  color: #555;
-  font-size: 1.2em;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  max-width: 400px;
-  width: 100%;
-}
-
-.input {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  box-sizing: border-box;
+.btn:disabled {
+  background-color: #a5d6a7;
+  cursor: not-allowed;
 }
 </style>

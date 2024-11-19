@@ -10,9 +10,9 @@ import (
 	"time"
 )
 
-type OrderWithEmployeeName struct {
+type OrderWithNames struct {
 	OrderID      int       `json:"order_id"`
-	ClientID     int       `json:"client_id"`
+	ClientName   string    `json:"client_name"`
 	EmployeeName string    `json:"employee_name"`
 	ServiceName  string    `json:"service_name"`
 	OrderDate    time.Time `json:"order_date"`
@@ -21,23 +21,29 @@ type OrderWithEmployeeName struct {
 
 func ClientOrdersApi(db *gorm.DB, client *redis.Client) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		userInfo, err := Redis.GetMultipleKey(client, "UserInfo")
-		fmt.Println("Retrieved data from Redis:", userInfo)
+		workerMap, err := Redis.GetMultipleKey(client, "UserInfo")
+		fmt.Println("Retrieved data from Redis:", workerMap)
 		if err != nil {
 			fmt.Println("Error retrieving user info from Redis:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Error retrieving user info from Redis",
+				"error": err.Error(),
 			})
 		}
 
-		var clientID int
-		switch v := userInfo["client_id"].(type) {
+		workerID, ok := workerMap["employee_id"]
+		if !ok {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "no employee_id found",
+			})
+		}
+
+		switch v := workerID.(type) {
 		case int:
-			clientID = v
+			workerID = v
 		case float64:
-			clientID = int(v)
+			workerID = int(v)
 		case string:
-			clientID, err = strconv.Atoi(v)
+			workerID, err = strconv.Atoi(v)
 			if err != nil {
 				fmt.Println("Error converting client_id from string to integer:", err)
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -51,14 +57,16 @@ func ClientOrdersApi(db *gorm.DB, client *redis.Client) fiber.Handler {
 			})
 		}
 
-		fmt.Println("Client ID retrieved from Redis:", clientID)
+		fmt.Println("Worker ID retrieved from Redis:", workerID)
 
-		var orders []OrderWithEmployeeName
+		var orders []OrderWithNames
 
 		if err = db.Table("orders").
-			Select("orders.order_id, orders.client_id, employees.full_name as employee_name, orders.service_name, orders.order_date, orders.receipt_date").
+			Select("orders.order_id, employees.full_name as employee_name, clients.full_name as client_name, "+
+				"orders.service_name, orders.order_date, orders.receipt_date").
 			Joins("left join employees on orders.employee_id = employees.employee_id").
-			Where("orders.client_id = ?", clientID).
+			Joins("left join clients on orders.client_id = clients.client_id").
+			Where("orders.employee_id = ?", workerID).
 			Find(&orders).Error; err != nil {
 			fmt.Println("Error fetching orders from database:", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
