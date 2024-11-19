@@ -47,6 +47,8 @@ func main() {
 	webApp.Get("/api/orders", handlers.ClientOrdersApi(dbu, rdb))
 	webApp.Get("/api/services", handlers.GetServices(dbu))
 	webApp.Post("/api/createOrder", handlers.CreateOrder(dbu, rdb))
+	webApp.Get("/api/employees", handlers.GetEmployees(dbu))
+	webApp.Post("/api/employees", handlers.AddEmployee(dbu))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))

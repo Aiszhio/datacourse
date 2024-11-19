@@ -21,13 +21,13 @@ type Order struct {
 }
 
 type Employee struct {
-	EmployeeID   int       `gorm:"column:employee_id;primaryKey;autoIncrement"`
-	FullName     string    `gorm:"column:full_name;not null"`
-	Position     string    `gorm:"column:position;not null"`
-	HireDate     time.Time `gorm:"column:hire_date;not null"`
-	BirthDate    time.Time `gorm:"column:birth_date;not null"`
-	PassportData string    `gorm:"column:passport_data;not null;unique"`
-	PhoneNumber  string    `gorm:"column:phone_number;not null;unique"`
+	EmployeeID   int       `gorm:"column:employee_id;primaryKey;autoIncrement" json:"employee_id"`
+	FullName     string    `gorm:"column:full_name;not null" json:"full_name"`
+	Position     string    `gorm:"column:position;not null" json:"position"`
+	HireDate     time.Time `gorm:"column:hire_date;not null" json:"hire_date"`
+	BirthDate    time.Time `gorm:"column:birth_date;not null" json:"birth_date"`
+	PassportData string    `gorm:"column:passport_data;not null;unique" json:"passport_data"`
+	PhoneNumber  string    `gorm:"column:phone_number;not null;unique" json:"phone_number"`
 }
 
 type Service struct {
