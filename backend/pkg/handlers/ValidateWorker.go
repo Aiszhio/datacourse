@@ -7,41 +7,51 @@ import (
 )
 
 func SetWorker(db *gorm.DB, orderStart time.Time, orderEnd time.Time) (int, error) {
-	allowedWorkerIDs := []int{1, 2, 4, 6, 8}
-
 	var busyWorkerIDs []int
 	err := db.Table("orders").
-		Select("DISTINCT employee_id").
-		Where("order_date < ? AND receipt_date > ?", orderEnd, orderStart).
-		Where("employee_id IN ?", allowedWorkerIDs).
-		Pluck("employee_id", &busyWorkerIDs).Error
+		Select("DISTINCT orders.employee_id").
+		Joins("LEFT JOIN employees ON employees.employee_id = orders.employee_id").
+		Where("orders.order_date < ? AND orders.receipt_date > ?", orderEnd, orderStart).
+		Where("employees.position = ?", "Фотограф").
+		Pluck("orders.employee_id", &busyWorkerIDs).Error
 	if err != nil {
 		return 0, fmt.Errorf("ошибка при поиске занятых работников: %v", err)
 	}
 
-	availableWorkerIDs := difference(allowedWorkerIDs, busyWorkerIDs)
-
-	if len(availableWorkerIDs) == 0 {
-		return 0, fmt.Errorf("нет доступных работников на указанный временной промежуток")
+	var allPhotographers []int
+	err = db.Table("employees").
+		Select("employees.employee_id").
+		Where("employees.position = ?", "Фотограф").
+		Pluck("employees.employee_id", &allPhotographers).Error
+	if err != nil {
+		return 0, fmt.Errorf("ошибка при получении списка фотографов: %v", err)
 	}
 
-	availableWorkerID := availableWorkerIDs[0]
+	freeWorkers, err := difference(busyWorkerIDs, allPhotographers)
+	if err != nil {
+		fmt.Println("Error difference busy workers")
+		return 0, err
+	}
 
-	fmt.Printf("Доступный ID работника: %v\n", availableWorkerID)
-	return availableWorkerID, nil
+	if len(freeWorkers) == 0 {
+		fmt.Println("No workers available")
+		return 0, nil
+	}
+
+	return freeWorkers[0], nil
 }
 
-func difference(all []int, busy []int) []int {
-	busyMap := make(map[int]bool)
-	for _, id := range busy {
-		busyMap[id] = true
+func difference(busyWorkers, allWorkers []int) ([]int, error) {
+	busyMap := make(map[int]struct{}, len(busyWorkers))
+	for _, id := range busyWorkers {
+		busyMap[id] = struct{}{}
 	}
 
-	var diff []int
-	for _, id := range all {
-		if !busyMap[id] {
-			diff = append(diff, id)
+	var freeWorkers []int
+	for _, id := range allWorkers {
+		if _, found := busyMap[id]; !found {
+			freeWorkers = append(freeWorkers, id)
 		}
 	}
-	return diff
+	return freeWorkers, nil
 }

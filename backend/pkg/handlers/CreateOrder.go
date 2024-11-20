@@ -12,7 +12,7 @@ import (
 )
 
 type ClientOrder struct {
-	ServiceID int       `json:"service"`
+	ServiceID []int     `json:"service"`
 	OrderDate time.Time `json:"orderDate"`
 }
 
@@ -28,7 +28,7 @@ func CreateOrder(db *gorm.DB, client *redis.Client) fiber.Handler {
 			})
 		}
 
-		if order.ServiceID == 0 || order.OrderDate.IsZero() {
+		if len(order.ServiceID) == 0 || order.OrderDate.IsZero() {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "Service ID and Order Date are required",
 			})

@@ -145,9 +145,10 @@ export default {
       }
     },
     // Получение заказов
+    // Получение заказов
     async fetchOrders() {
       try {
-        const response = await fetch('http://localhost:8080/api/orders', {
+        const response = await fetch('http://localhost:8080/api/orders/worker', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -160,10 +161,14 @@ export default {
         }
 
         const data = await response.json();
-        console.log("Полученные заказы:", data); // Логирование данных для отладки
+
+        // Убедитесь, что data.data существует и является массивом
+        if (!data.data || !Array.isArray(data.data)) {
+          throw new Error('Некорректный формат данных');
+        }
 
         // Преобразование полей из snake_case в PascalCase
-        this.orders = data.map(order => ({
+        this.orders = data.data.map(order => ({
           OrderID: order.order_id,
           ClientName: order.client_name,
           ServiceName: order.service_name,
@@ -171,7 +176,6 @@ export default {
           ReceiptDate: order.receipt_date
         }));
 
-        console.log("Преобразованные заказы:", this.orders); // Дополнительное логирование
       } catch (error) {
         console.error('Ошибка при загрузке заказов:', error.message);
         alert('Не удалось загрузить заказы.');

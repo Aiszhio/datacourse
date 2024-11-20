@@ -45,6 +45,7 @@ func main() {
 	webApp.Get("/api/CheckRole", Authentification.CheckUserRole(rdb))
 	webApp.Get("/api/user", handlers.GetUserData(rdb))
 	webApp.Get("/api/orders", handlers.ClientOrdersApi(dbu, rdb))
+	webApp.Get("/api/orders/worker", handlers.WorkerOrdersApi(dbu, rdb))
 	webApp.Get("/api/services", handlers.GetServices(dbu))
 	webApp.Post("/api/createOrder", handlers.CreateOrder(dbu, rdb))
 	webApp.Get("/api/employees", handlers.GetEmployees(dbu))
