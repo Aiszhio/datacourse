@@ -10,14 +10,12 @@
         <tr>
           <th>Номер материала</th>
           <th>Название материала</th>
-          <th>Количество</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="material in materials" :key="material.id">
-          <td>{{ material.id }}</td>
-          <td>{{ material.name }}</td>
-          <td>{{ material.quantity }}</td>
+        <tr v-for="material in materials" :key="material.material_id">
+          <td>{{ material.material_id }}</td>
+          <td>{{ material.material_name }}</td>
         </tr>
         </tbody>
       </table>
@@ -31,16 +29,16 @@
         <thead>
         <tr>
           <th>Номер расхода</th>
-          <th>Номер материала</th>
+          <th>Название материала</th>
           <th>Дата расхода</th>
           <th>Количество расхода</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="expenditure in expenditures" :key="expenditure.id">
-          <td>{{ expenditure.id }}</td>
-          <td>{{ expenditure.materialId }}</td>
-          <td>{{ formatDate(expenditure.date) }}</td>
+        <tr v-for="expenditure in expenditures" :key="expenditure.expenditure_id">
+          <td>{{ expenditure.expenditure_id }}</td>
+          <td>{{ expenditure.material_name }}</td>
+          <td>{{ formatDate(expenditure.expenditure_date) }}</td>
           <td>{{ expenditure.quantity }}</td>
         </tr>
         </tbody>
@@ -55,7 +53,7 @@
         <thead>
         <tr>
           <th>Номер закупки</th>
-          <th>Номер материала</th>
+          <th>Название материала</th>
           <th>Стоимость</th>
           <th>Поставщик</th>
           <th>Количество</th>
@@ -63,13 +61,13 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="purchase in purchases" :key="purchase.id">
-          <td>{{ purchase.id }}</td>
-          <td>{{ purchase.materialId }}</td>
+        <tr v-for="purchase in purchases" :key="purchase.purchase_id">
+          <td>{{ purchase.purchase_id }}</td>
+          <td>{{ purchase.material_name }}</td>
           <td>{{ purchase.cost }}</td>
           <td>{{ purchase.supplier }}</td>
           <td>{{ purchase.quantity }}</td>
-          <td>{{ formatDate(purchase.date) }}</td>
+          <td>{{ formatDate(purchase.supply_date) }}</td>
         </tr>
         </tbody>
       </table>
@@ -81,13 +79,33 @@
         <h3>Добавить расход материала</h3>
 
         <label for="materialId">Номер материала</label>
-        <input id="materialId" v-model="currentExpenditure.materialId" class="input" placeholder="Номер материала" required />
+        <input
+            id="materialId"
+            v-model="currentExpenditure.material_id"
+            class="input"
+            placeholder="Номер материала"
+            required
+        />
 
-        <label for="date">Дата расхода</label>
-        <input id="date" type="date" v-model="currentExpenditure.date" class="input" required />
+        <label for="expenditureDate">Дата расхода</label>
+        <input
+            id="expenditureDate"
+            type="date"
+            v-model="currentExpenditure.expenditure_date"
+            class="input"
+            required
+        />
 
         <label for="quantity">Количество расхода</label>
-        <input id="quantity" type="number" v-model="currentExpenditure.quantity" class="input" placeholder="Количество расхода" min="1" required />
+        <input
+            id="quantity"
+            type="number"
+            v-model="currentExpenditure.quantity"
+            class="input"
+            placeholder="Количество расхода"
+            min="1"
+            required
+        />
 
         <button @click="saveExpenditure" class="btn">Сохранить</button>
         <button @click="closeExpenditureModal" class="btn danger">Отмена</button>
@@ -99,20 +117,54 @@
       <div class="modal">
         <h3>Добавить закупку материала</h3>
 
-        <label for="materialId">Номер материала</label>
-        <input id="materialId" v-model="currentPurchase.materialId" class="input" placeholder="Номер материала" required />
+        <label for="purchaseMaterialId">Номер материала</label>
+        <input
+            id="purchaseMaterialId"
+            v-model="currentPurchase.material_id"
+            class="input"
+            placeholder="Номер материала"
+            required
+        />
 
         <label for="supplier">Поставщик</label>
-        <input id="supplier" v-model="currentPurchase.supplier" class="input" placeholder="Поставщик" required />
+        <input
+            id="supplier"
+            v-model="currentPurchase.supplier"
+            class="input"
+            placeholder="Поставщик"
+            required
+        />
 
-        <label for="quantity">Количество</label>
-        <input id="quantity" type="number" v-model="currentPurchase.quantity" class="input" placeholder="Количество" min="1" required />
+        <label for="purchaseQuantity">Количество</label>
+        <input
+            id="purchaseQuantity"
+            type="number"
+            v-model="currentPurchase.quantity"
+            class="input"
+            placeholder="Количество"
+            min="1"
+            required
+        />
 
         <label for="cost">Стоимость</label>
-        <input id="cost" type="number" v-model="currentPurchase.cost" class="input" placeholder="Стоимость" min="0" required />
+        <input
+            id="cost"
+            type="number"
+            v-model="currentPurchase.cost"
+            class="input"
+            placeholder="Стоимость"
+            min="0"
+            required
+        />
 
-        <label for="date">Дата поставки</label>
-        <input id="date" type="date" v-model="currentPurchase.date" class="input" required />
+        <label for="supplyDate">Дата поставки</label>
+        <input
+            id="supplyDate"
+            type="date"
+            v-model="currentPurchase.supply_date"
+            class="input"
+            required
+        />
 
         <button @click="savePurchase" class="btn">Сохранить</button>
         <button @click="closePurchaseModal" class="btn danger">Отмена</button>
@@ -147,14 +199,13 @@
 </template>
 
 <script>
+import axios from 'axios';
+
 export default {
   name: 'MaterialsOverview',
   data() {
     return {
-      materials: [
-        { id: 1, name: 'Фотобумага', quantity: 100 },
-        { id: 2, name: 'Картридж для принтера', quantity: 50 }
-      ],
+      materials: [],
       expenditures: [],
       purchases: [],
       showExpenditureModal: false,
@@ -163,43 +214,121 @@ export default {
       currentPurchase: {}
     };
   },
+  created() {
+    this.fetchMaterials();
+    this.fetchExpenditures();
+    this.fetchPurchases();
+  },
   methods: {
+    // Получение списка материалов
+    async fetchMaterials() {
+      try {
+        const response = await axios.get('http://localhost:8080/api/materials', {
+          withCredentials: true
+        });
+        this.materials = response.data.materials;
+      } catch (error) {
+        console.error('Ошибка при загрузке материалов:', error);
+        alert('Не удалось загрузить материалы.');
+      }
+    },
+
+    // Получение списка расходов
+    async fetchExpenditures() {
+      try {
+        const response = await axios.get('http://localhost:8080/api/expenditures', {
+          withCredentials: true
+        });
+        this.expenditures = response.data.expenditures;
+      } catch (error) {
+        console.error('Ошибка при загрузке расходов:', error);
+        alert('Не удалось загрузить расходы.');
+      }
+    },
+
+    // Получение списка закупок
+    async fetchPurchases() {
+      try {
+        const response = await axios.get('http://localhost:8080/api/purchases', {
+          withCredentials: true
+        });
+        this.purchases = response.data.purchases;
+      } catch (error) {
+        console.error('Ошибка при загрузке закупок:', error);
+        alert('Не удалось загрузить закупки.');
+      }
+    },
+
+    // Открытие модального окна для добавления расхода
     openAddExpenditureModal() {
       this.showExpenditureModal = true;
-      this.currentExpenditure = { materialId: '', date: '', quantity: 0 };
+      this.currentExpenditure = { material_id: '', expenditure_date: '', quantity: 0 };
     },
+
+    // Открытие модального окна для добавления закупки
     openAddPurchaseModal() {
       this.showPurchaseModal = true;
-      this.currentPurchase = { materialId: '', supplier: '', quantity: 0, cost: 0, date: '' };
+      this.currentPurchase = { material_id: '', supplier: '', quantity: 0, cost: 0, supply_date: '' };
     },
-    saveExpenditure() {
+
+    // Сохранение расхода
+    async saveExpenditure() {
       if (this.currentExpenditure.quantity > 0) {
-        this.expenditures.push({ ...this.currentExpenditure, id: Date.now() });
-        this.closeExpenditureModal();
+        try {
+          const response = await axios.post('http://localhost:8080/api/expenditures', this.currentExpenditure, {
+            withCredentials: true
+          });
+          this.expenditures.push(response.data.expenditure);
+          this.closeExpenditureModal();
+          alert('Расход успешно добавлен.');
+        } catch (error) {
+          console.error('Ошибка при добавлении расхода:', error);
+          alert('Не удалось добавить расход.');
+        }
       } else {
         alert('Количество расхода должно быть больше 0');
       }
     },
-    savePurchase() {
+
+    // Сохранение закупки
+    async savePurchase() {
       if (this.currentPurchase.quantity > 0 && this.currentPurchase.cost >= 0) {
-        this.purchases.push({ ...this.currentPurchase, id: Date.now() });
-        this.closePurchaseModal();
+        try {
+          const response = await axios.post('http://localhost:8080/api/purchases', this.currentPurchase, {
+            withCredentials: true
+          });
+          this.purchases.push(response.data.purchase);
+          this.closePurchaseModal();
+          alert('Закупка успешно добавлена.');
+        } catch (error) {
+          console.error('Ошибка при добавлении закупки:', error);
+          alert('Не удалось добавить закупку.');
+        }
       } else {
         alert('Количество должно быть больше 0, а стоимость не может быть отрицательной');
       }
     },
+
+    // Закрытие модального окна расхода
     closeExpenditureModal() {
       this.showExpenditureModal = false;
       this.currentExpenditure = {};
     },
+
+    // Закрытие модального окна закупки
     closePurchaseModal() {
       this.showPurchaseModal = false;
       this.currentPurchase = {};
     },
+
+    // Форматирование даты
     formatDate(dateString) {
       const date = new Date(dateString);
+      if (isNaN(date)) return 'Invalid Date';
       return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
     },
+
+    // Навигация
     goToAdminHome() {
       this.$router.push({ name: 'AdminHome' });
     },

@@ -4,11 +4,36 @@
 
     <!-- Раздел сортировки заказов -->
     <div class="sort-buttons">
-      <button @click="sortBy('clientId')" class="btn">Сортировать по номеру клиента</button>
-      <button @click="sortBy('employeeId')" class="btn">Сортировать по номеру сотрудника</button>
-      <button @click="sortBy('service')" class="btn">Сортировать по услуге</button>
-      <button @click="sortBy('orderDate')" class="btn">Сортировать по дате оформления</button>
-      <button @click="sortBy('receiveDate')" class="btn">Сортировать по дате получения</button>
+      <button @click="sortBy('clientName')" class="btn">
+        Сортировать по имени клиента
+        <span v-if="currentSortKey === 'clientName'">
+          {{ sortOrders.clientName === 'asc' ? '▲' : '▼' }}
+        </span>
+      </button>
+      <button @click="sortBy('employeeName')" class="btn">
+        Сортировать по имени сотрудника
+        <span v-if="currentSortKey === 'employeeName'">
+          {{ sortOrders.employeeName === 'asc' ? '▲' : '▼' }}
+        </span>
+      </button>
+      <button @click="sortBy('service')" class="btn">
+        Сортировать по услуге
+        <span v-if="currentSortKey === 'service'">
+          {{ sortOrders.service === 'asc' ? '▲' : '▼' }}
+        </span>
+      </button>
+      <button @click="sortBy('orderDate')" class="btn">
+        Сортировать по дате оформления
+        <span v-if="currentSortKey === 'orderDate'">
+          {{ sortOrders.orderDate === 'asc' ? '▲' : '▼' }}
+        </span>
+      </button>
+      <button @click="sortBy('receiveDate')" class="btn">
+        Сортировать по дате получения
+        <span v-if="currentSortKey === 'receiveDate'">
+          {{ sortOrders.receiveDate === 'asc' ? '▲' : '▼' }}
+        </span>
+      </button>
     </div>
 
     <!-- Раздел истории заказов -->
@@ -18,8 +43,8 @@
         <thead>
         <tr>
           <th>Номер заказа</th>
-          <th>Номер клиента</th>
-          <th>Номер сотрудника</th>
+          <th>Имя клиента</th>
+          <th>Имя сотрудника</th>
           <th>Название услуги</th>
           <th>Дата оформления</th>
           <th>Дата получения</th>
@@ -29,8 +54,8 @@
         <tbody>
         <tr v-for="order in orders" :key="order.id">
           <td>{{ order.id }}</td>
-          <td>{{ order.clientId }}</td>
-          <td>{{ order.employeeId }}</td>
+          <td>{{ order.clientName }}</td>
+          <td>{{ order.employeeName }}</td>
           <td>{{ order.service }}</td>
           <td>{{ formatDate(order.orderDate) }}</td>
           <td>{{ formatDate(order.receiveDate) }}</td>
@@ -48,20 +73,51 @@
       <div class="modal">
         <h3>Редактировать заказ</h3>
 
-        <label for="clientId">Номер клиента</label>
-        <input id="clientId" v-model="currentOrder.clientId" class="input" placeholder="Номер клиента" required />
+        <!-- Отображение имен клиента и сотрудника как статичных полей -->
+        <label>Имя клиента</label>
+        <input
+            v-model="currentOrder.clientName"
+            class="input"
+            placeholder="Имя клиента"
+            required
+            readonly
+        />
 
-        <label for="employeeId">Номер сотрудника</label>
-        <input id="employeeId" v-model="currentOrder.employeeId" class="input" placeholder="Номер сотрудника" required />
+        <label>Имя сотрудника</label>
+        <input
+            v-model="currentOrder.employeeName"
+            class="input"
+            placeholder="Имя сотрудника"
+            required
+            readonly
+        />
 
         <label for="service">Название услуги</label>
-        <input id="service" v-model="currentOrder.service" class="input" placeholder="Название услуги" required />
+        <input
+            id="service"
+            v-model="currentOrder.service"
+            class="input"
+            placeholder="Название услуги"
+            required
+        />
 
         <label for="orderDate">Дата оформления</label>
-        <input id="orderDate" type="date" v-model="currentOrder.orderDate" class="input" required />
+        <input
+            id="orderDate"
+            type="date"
+            v-model="currentOrder.orderDate"
+            class="input"
+            required
+        />
 
         <label for="receiveDate">Дата получения</label>
-        <input id="receiveDate" type="date" v-model="currentOrder.receiveDate" class="input" required />
+        <input
+            id="receiveDate"
+            type="date"
+            v-model="currentOrder.receiveDate"
+            class="input"
+            required
+        />
 
         <button @click="saveOrder" class="btn">Сохранить</button>
         <button @click="closeEditOrderModal" class="btn danger">Отмена</button>
@@ -95,22 +151,51 @@
 </template>
 
 <script>
+import axios from 'axios';
+
 export default {
   name: 'OrderHistory',
   data() {
     return {
-      orders: [
-        { id: 101, clientId: 1, employeeId: 2, service: 'Фотосессия', orderDate: '2024-08-15', receiveDate: '2024-08-20' },
-        { id: 102, clientId: 2, employeeId: 1, service: 'Фотоальбом', orderDate: '2024-09-01', receiveDate: '2024-09-10' }
-      ],
+      orders: [],
       showEditOrderModal: false,
-      currentOrder: {}
+      currentOrder: {},
+      sortOrders: {
+        clientName: 'asc',
+        employeeName: 'asc',
+        service: 'asc',
+        orderDate: 'asc',
+        receiveDate: 'asc',
+      },
+      currentSortKey: '',
     };
   },
+  created() {
+    this.fetchOrders();
+  },
   methods: {
-    deleteOrder(id) {
-      this.orders = this.orders.filter(order => order.id !== id);
-      alert(`Заказ #${id} удален.`);
+    async fetchOrders() {
+      try {
+        const response = await axios.get('http://localhost:8080/api/orders/admin', {
+          withCredentials: true, // Отправка куки с запросом
+        });
+        this.orders = response.data.orders;
+      } catch (error) {
+        console.error('Ошибка при загрузке заказов:', error);
+      }
+    },
+    async deleteOrder(id) {
+      if (!confirm(`Вы уверены, что хотите удалить заказ #${id}?`)) return;
+      try {
+        await axios.delete(`http://localhost:8080/api/orders/${id}`, {
+          withCredentials: true, // Отправка куки с запросом
+        });
+        this.orders = this.orders.filter((order) => order.id !== id);
+        alert(`Заказ #${id} удален.`);
+      } catch (error) {
+        console.error(`Ошибка при удалении заказа #${id}:`, error);
+        alert('Не удалось удалить заказ.');
+      }
     },
     openEditOrderModal(order) {
       this.currentOrder = { ...order };
@@ -120,18 +205,49 @@ export default {
       this.showEditOrderModal = false;
       this.currentOrder = {};
     },
-    saveOrder() {
-      const index = this.orders.findIndex(order => order.id === this.currentOrder.id);
-      if (index !== -1) {
-        this.orders.splice(index, 1, { ...this.currentOrder });
-        alert(`Заказ #${this.currentOrder.id} обновлен.`);
+    async saveOrder() {
+      try {
+        await axios.put(`http://localhost:8080/api/orders/${this.currentOrder.id}`, this.currentOrder, {
+          withCredentials: true, // Отправка куки с запросом
+        });
+        const index = this.orders.findIndex((order) => order.id === this.currentOrder.id);
+        if (index !== -1) {
+          this.orders.splice(index, 1, { ...this.currentOrder });
+          alert(`Заказ #${this.currentOrder.id} обновлен.`);
+        }
+        this.closeEditOrderModal();
+      } catch (error) {
+        console.error(`Ошибка при обновлении заказа #${this.currentOrder.id}:`, error);
+        alert('Не удалось обновить заказ.');
       }
-      this.closeEditOrderModal();
     },
     sortBy(key) {
+      if (this.currentSortKey === key) {
+        // Переключение направления сортировки
+        this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
+      } else {
+        // Установка направления сортировки по умолчанию (возрастание) для нового ключа
+        this.sortOrders[key] = 'asc';
+        this.currentSortKey = key;
+      }
+
+      const direction = this.sortOrders[key];
       this.orders.sort((a, b) => {
-        if (a[key] < b[key]) return -1;
-        if (a[key] > b[key]) return 1;
+        let aVal = a[key];
+        let bVal = b[key];
+
+        // Для дат преобразуем в объекты Date
+        if (key === 'orderDate' || key === 'receiveDate') {
+          aVal = new Date(aVal);
+          bVal = new Date(bVal);
+        } else {
+          // Приводим к строкам для сравнения
+          aVal = aVal.toString().toLowerCase();
+          bVal = bVal.toString().toLowerCase();
+        }
+
+        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
         return 0;
       });
     },
@@ -153,8 +269,8 @@ export default {
     },
     goToServicesPage() {
       this.$router.push({ name: 'Services' });
-    }
-  }
+    },
+  },
 };
 </script>
 

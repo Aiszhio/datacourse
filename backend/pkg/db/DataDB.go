@@ -12,12 +12,12 @@ type Client struct {
 }
 
 type Order struct {
-	OrderID     int       `gorm:"column:order_id;primaryKey;autoIncrement"`
-	ClientID    int       `gorm:"column:client_id;not null"`
-	EmployeeID  int       `gorm:"column:employee_id;not null"`
-	ServiceName string    `gorm:"column:service_name;not null"`
-	OrderDate   time.Time `gorm:"column:order_date;not null"`
-	ReceiptDate time.Time `gorm:"column:receipt_date;not null"`
+	OrderID     int       `gorm:"column:order_id" json:"id"`
+	ClientID    int       `gorm:"column:client_id" json:"clientId"`
+	EmployeeID  int       `gorm:"column:employee_id" json:"employeeId"`
+	ServiceName string    `gorm:"column:service_name" json:"service"`
+	OrderDate   time.Time `gorm:"column:order_date" json:"orderDate"`
+	ReceiptDate time.Time `gorm:"column:receipt_date" json:"receiveDate"`
 }
 
 type Employee struct {
@@ -31,44 +31,45 @@ type Employee struct {
 }
 
 type Service struct {
-	ServiceID int     `gorm:"column:service_id;primaryKey;autoIncrement"`
-	Price     float64 `gorm:"column:price;not null"`
-	Name      string  `gorm:"column:name"`
+	ServiceID int     `gorm:"column:service_id;primaryKey;autoIncrement" json:"service_id"`
+	Price     float64 `gorm:"column:price;not null" json:"price"`
+	Name      string  `gorm:"column:name" json:"name"`
 }
 
 type Booking struct {
-	BookingID      int       `gorm:"column:booking_id;primaryKey;autoIncrement"`
-	BookingType    string    `gorm:"column:booking_type;not null"`
-	OrderID        int       `gorm:"column:order_id;not null"`
-	BookingTime    time.Time `gorm:"column:booking_time;not null"`
-	BookerFullName string    `gorm:"column:booker_full_name;not null"`
+	BookingID      int       `gorm:"column:booking_id;primaryKey;autoIncrement" json:"id"`
+	BookingType    string    `gorm:"column:booking_type;not null" json:"type"`
+	OrderID        int       `gorm:"column:order_id;not null" json:"orderId"`
+	BookingTime    time.Time `gorm:"column:booking_time;not null" json:"time"`
+	BookerFullName string    `gorm:"column:booker_full_name;not null" json:"name"`
 }
 
 type Material struct {
-	MaterialID   int    `gorm:"column:material_id;primaryKey;autoIncrement"`
-	MaterialName string `gorm:"column:material_name;not null;unique"`
+	MaterialID   int    `gorm:"column:material_id;primaryKey;autoIncrement" json:"material_id"`
+	MaterialName string `gorm:"column:material_name;not null;unique" json:"material_name"`
+	Quantity     int    `gorm:"column:quantity;default:0" json:"quantity"`
 }
 
 type MaterialExpenditure struct {
-	ExpenditureID   int       `gorm:"column:expenditure_id;primaryKey;autoIncrement"`
-	MaterialID      int       `gorm:"column:material_id;not null"`
-	ExpenditureDate time.Time `gorm:"column:expenditure_date;not null"`
-	Quantity        int       `gorm:"column:quantity;not null"`
+	ExpenditureID   int       `gorm:"column:expenditure_id;primaryKey;autoIncrement" json:"expenditure_id"`
+	MaterialID      int       `gorm:"column:material_id;not null" json:"material_id"`
+	ExpenditureDate time.Time `gorm:"column:expenditure_date;not null" json:"expenditure_date"`
+	Quantity        int       `gorm:"column:quantity;not null" json:"quantity"`
 }
 
 type MaterialPurchase struct {
-	PurchaseID int       `gorm:"column:purchase_id;primaryKey;autoIncrement"`
-	MaterialID int       `gorm:"column:material_id;not null"`
-	Cost       float64   `gorm:"column:cost;not null"`
-	Supplier   string    `gorm:"column:supplier;not null"`
-	Quantity   int       `gorm:"column:quantity;not null"`
-	SupplyDate time.Time `gorm:"column:supply_date;not null"`
+	PurchaseID int       `gorm:"column:purchase_id;primaryKey;autoIncrement" json:"purchase_id"`
+	MaterialID int       `gorm:"column:material_id;not null" json:"material_id"`
+	Cost       float64   `gorm:"column:cost;not null" json:"cost"`
+	Supplier   string    `gorm:"column:supplier;not null" json:"supplier"`
+	Quantity   int       `gorm:"column:quantity;not null" json:"quantity"`
+	SupplyDate time.Time `gorm:"column:supply_date;not null" json:"supply_date"`
 }
 
 type Equipment struct {
-	EquipmentID int    `gorm:"column:equipment_id;primaryKey;autoIncrement"`
-	Brand       string `gorm:"column:brand;not null"`
-	Model       string `gorm:"column:model;not null"`
+	EquipmentID int    `gorm:"column:equipment_id;primaryKey;autoIncrement" json:"equipment_id"`
+	Brand       string `gorm:"column:brand;not null" json:"brand"`
+	Model       string `gorm:"column:model;not null" json:"model"`
 }
 
 type ServiceRequirement struct {

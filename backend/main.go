@@ -50,6 +50,12 @@ func main() {
 	webApp.Post("/api/createOrder", handlers.CreateOrder(dbu, rdb))
 	webApp.Get("/api/employees", handlers.GetEmployees(dbu))
 	webApp.Post("/api/employees", handlers.AddEmployee(dbu))
+	webApp.Get("/api/orders/admin", handlers.GetAdminOrders(dbu))
+	webApp.Get("/api/materials", handlers.GetMaterials(dbu))
+	webApp.Get("/api/expenditures", handlers.GetMaterialExpenditures(dbu))
+	webApp.Get("/api/purchases", handlers.GetMaterialPurchases(dbu))
+	webApp.Get("/api/services/admin", handlers.GetServicesAndEquipment(dbu))
+	webApp.Get("/api/bookings/admin", handlers.GetBookings(dbu))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))

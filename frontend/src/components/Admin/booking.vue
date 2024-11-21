@@ -1,52 +1,3 @@
-<script>
-export default {
-  name: 'Bookings',
-  data() {
-    return {
-      bookings: [
-        { id: 1, type: 'Персональная', orderId: 101, time: '2024-11-15 14:00', name: 'Иван Иванов', status: 'Ожидает подтверждения' },
-        { id: 2, type: 'Групповая', orderId: 102, time: '2024-11-16 10:00', name: 'Анна Петрова', status: 'Ожидает подтверждения' }
-      ], // Пример списка бронирований
-      showModal: false,
-      modalType: '',
-      modalTitle: '',
-      currentItem: {}
-    };
-  },
-  methods: {
-    confirmBooking(bookingId) {
-      const booking = this.bookings.find(b => b.id === bookingId);
-      if (booking) {
-        booking.status = 'Подтверждена';
-        alert(`Бронь #${bookingId} подтверждена`);
-      }
-    },
-    cancelBooking(bookingId) {
-      const booking = this.bookings.find(b => b.id === bookingId);
-      if (booking) {
-        booking.status = 'Отменена';
-        alert(`Бронь #${bookingId} отменена`);
-      }
-    },
-    goToAdminHome() {
-      this.$router.push({ name: 'AdminHome' });
-    },
-    goToEmployeesPage() {
-      this.$router.push({ name: 'ManageEmp' });
-    },
-    goToOrdersPage() {
-      this.$router.push({ name: 'OrderHistory' });
-    },
-    goToMaterialsPage() {
-      this.$router.push({ name: 'MaterialsOverview' });
-    },
-    goToServicesPage() {
-      this.$router.push({ name: 'Services' });
-    }
-  }
-};
-</script>
-
 <template>
   <div class="bookings-dashboard">
     <h2>Управление бронированием</h2>
@@ -62,8 +13,7 @@ export default {
           <th>Номер заказа</th>
           <th>Время брони</th>
           <th>ФИО бронирующего</th>
-          <th>Статус</th>
-          <th>Действия</th>
+          <th>Действия</th> <!-- Добавляем столбец Действия -->
         </tr>
         </thead>
         <tbody>
@@ -71,13 +21,24 @@ export default {
           <td>{{ booking.id }}</td>
           <td>{{ booking.type }}</td>
           <td>{{ booking.orderId }}</td>
-          <td>{{ booking.time }}</td>
+          <td>{{ formatDate(booking.time) }}</td>
           <td>{{ booking.name }}</td>
-          <td>{{ booking.status }}</td>
           <td>
-            <button v-if="booking.status === 'Ожидает подтверждения'" @click="confirmBooking(booking.id)" class="btn">Подтвердить</button>
-            <button v-if="booking.status === 'Ожидает подтверждения'" @click="cancelBooking(booking.id)" class="btn danger">Отменить</button>
-            <span v-else>{{ booking.status }}</span>
+            <!-- Проверяем, является ли бронирование предстоящим -->
+            <button
+                v-if="isUpcoming(booking.time)"
+                @click="editBooking(booking)"
+                class="btn edit"
+            >
+              Редактировать
+            </button>
+            <button
+                v-if="isUpcoming(booking.time)"
+                @click="deleteBooking(booking.id)"
+                class="btn delete"
+            >
+              Удалить
+            </button>
           </td>
         </tr>
         </tbody>
@@ -108,13 +69,158 @@ export default {
       </div>
     </div>
 
+    <!-- Модальное окно для редактирования бронирования -->
+    <div v-if="showModal" class="modal-overlay">
+      <div class="modal">
+        <h3>{{ modalTitle }}</h3>
+        <form @submit.prevent="submitEdit">
+          <label>
+            Тип брони:
+            <input v-model="currentItem.type" required />
+          </label>
+          <label>
+            Номер заказа:
+            <input type="number" v-model="currentItem.orderId" required />
+          </label>
+          <label>
+            Время брони:
+            <input type="datetime-local" v-model="formattedBookingTime" required />
+          </label>
+          <label>
+            ФИО бронирующего:
+            <input v-model="currentItem.name" required />
+          </label>
+          <div class="modal-actions">
+            <button type="submit" class="btn save">Сохранить</button>
+            <button type="button" @click="closeModal" class="btn cancel">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
+
+<script>
+import axios from 'axios'; // Замените на import из настроенного файла axios.js, если используется
+
+export default {
+  name: 'Bookings',
+  data() {
+    return {
+      bookings: [], // Пустой массив для загрузки бронирований
+      showModal: false,
+      modalTitle: '',
+      currentItem: {},
+      formattedBookingTime: ''
+    };
+  },
+  methods: {
+    async fetchBookings() {
+      try {
+        const response = await axios.get('http://localhost:8080/api/bookings/admin', { withCredentials: true });
+        // Предполагаем, что API возвращает объект с массивом bookings
+        this.bookings = response.data.bookings;
+      } catch (error) {
+        console.error('Ошибка при загрузке бронирований:', error);
+        alert('Не удалось загрузить бронирования.');
+      }
+    },
+    formatDate(dateString) {
+      const options = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      };
+      return new Date(dateString).toLocaleDateString('ru-RU', options);
+    },
+    isUpcoming(bookingTime) {
+      return new Date(bookingTime) > new Date();
+    },
+    editBooking(booking) {
+      this.modalTitle = `Редактирование брони #${booking.id}`;
+      this.currentItem = { ...booking };
+      // Форматируем время для input[type="datetime-local"]
+      this.formattedBookingTime = this.formatDateForInput(booking.time);
+      this.showModal = true;
+    },
+    formatDateForInput(dateString) {
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    },
+    closeModal() {
+      this.showModal = false;
+      this.currentItem = {};
+      this.formattedBookingTime = '';
+    },
+    async submitEdit() {
+      try {
+        const updatedBooking = {
+          type: this.currentItem.type,
+          orderId: this.currentItem.orderId,
+          time: new Date(this.formattedBookingTime).toISOString(),
+          name: this.currentItem.name
+        };
+        await axios.put(`/api/bookings/${this.currentItem.id}`, updatedBooking);
+        // Обновляем локальные данные
+        const index = this.bookings.findIndex(b => b.id === this.currentItem.id);
+        if (index !== -1) {
+          this.bookings[index] = { ...this.currentItem, time: updatedBooking.time };
+        }
+        alert('Бронирование успешно обновлено.');
+        this.closeModal();
+      } catch (error) {
+        console.error('Ошибка при обновлении бронирования:', error);
+        alert('Не удалось обновить бронирование.');
+      }
+    },
+    async deleteBooking(bookingId) {
+      if (!confirm(`Вы уверены, что хотите удалить бронь #${bookingId}?`)) {
+        return;
+      }
+      try {
+        await axios.delete(`/api/bookings/${bookingId}`);
+        // Удаляем бронирование из локального массива
+        this.bookings = this.bookings.filter(b => b.id !== bookingId);
+        alert('Бронирование успешно удалено.');
+      } catch (error) {
+        console.error('Ошибка при удалении бронирования:', error);
+        alert('Не удалось удалить бронирование.');
+      }
+    },
+    goToAdminHome() {
+      this.$router.push({ name: 'AdminHome' });
+    },
+    goToEmployeesPage() {
+      this.$router.push({ name: 'ManageEmp' });
+    },
+    goToOrdersPage() {
+      this.$router.push({ name: 'OrderHistory' });
+    },
+    goToMaterialsPage() {
+      this.$router.push({ name: 'MaterialsOverview' });
+    },
+    goToServicesPage() {
+      this.$router.push({ name: 'Services' });
+    }
+  },
+  mounted() {
+    this.fetchBookings();
+  }
+};
+</script>
 
 <style scoped>
 .bookings-dashboard {
   padding: 20px;
   max-width: 900px;
+  max-height: 100vh;
   margin: 0 auto;
 }
 
