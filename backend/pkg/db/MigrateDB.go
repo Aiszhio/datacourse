@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"log"
 )
 
 func MigrateDB() error {
@@ -25,6 +26,7 @@ func MigrateDB() error {
 		&Equipment{},
 		&ServiceRequirement{},
 		&OrderContent{},
+		&BookingToOrder{},
 	); err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
@@ -33,90 +35,226 @@ func MigrateDB() error {
 }
 
 func InsertUniqueDB(db *gorm.DB) error {
-	for _, service := range Services {
-		var existingService Service
-		if service.Name == "" {
-			fmt.Println("Skipping empty service name!!!")
-			continue
-		}
-		if err := db.FirstOrCreate(&existingService, Service{ServiceID: service.ServiceID}).Error; err != nil {
-			return err
-		}
+	if err := insertServices(db); err != nil {
+		return err
 	}
 
-	for _, material := range Materials {
-		var existingMaterial Material
-		if material.MaterialName == "" {
-			fmt.Println("Skipping empty material name")
-			continue
-		}
-		if err := db.FirstOrCreate(&existingMaterial, Material{MaterialID: material.MaterialID}).Error; err != nil {
-			return err
-		}
+	if err := insertMaterials(db); err != nil {
+		return err
 	}
 
-	for _, equipment := range Equipments {
-		var existingEquipment Equipment
-		if err := db.FirstOrCreate(&existingEquipment, Equipment{EquipmentID: equipment.EquipmentID}).Error; err != nil {
-			return err
-		}
+	if err := insertEquipments(db); err != nil {
+		return err
 	}
 
-	for _, serviceRequirement := range ServiceRequirements {
-		var existingServiceRequirement ServiceRequirement
-		if err := db.FirstOrCreate(&existingServiceRequirement, ServiceRequirement{ServiceID: serviceRequirement.ServiceID}).Error; err != nil {
-			return err
-		}
+	if err := insertServiceRequirements(db); err != nil {
+		return err
 	}
 
-	for _, client := range Clients {
-		var existingClient Client
-		if err := db.FirstOrCreate(&existingClient, Client{ClientID: client.ClientID}).Error; err != nil {
-			return err
-		}
+	if err := insertClients(db); err != nil {
+		return err
 	}
 
-	for _, order := range Orders {
-		var existingOrder Order
-		if err := db.FirstOrCreate(&existingOrder, Order{OrderID: order.OrderID}).Error; err != nil {
-			return err
-		}
+	if err := insertEmployees(db); err != nil {
+		return err
 	}
 
-	for _, employee := range Employees {
-		var existingEmployee Employee
-		if err := db.FirstOrCreate(&existingEmployee, Employee{EmployeeID: employee.EmployeeID}).Error; err != nil {
-			return err
-		}
+	if err := insertOrders(db); err != nil {
+		return err
 	}
 
-	for _, booking := range Bookings {
-		var existingBooking Booking
-		if err := db.FirstOrCreate(&existingBooking, Booking{BookingID: booking.BookingID}).Error; err != nil {
-			return err
-		}
+	if err := insertBookings(db); err != nil {
+		return err
 	}
 
-	for _, materialExpenditure := range MaterialExpenditures {
-		var existingMaterialExpenditure MaterialExpenditure
-		if err := db.FirstOrCreate(&existingMaterialExpenditure, MaterialExpenditure{ExpenditureID: materialExpenditure.ExpenditureID}).Error; err != nil {
-			return err
-		}
+	if err := insertMaterialExpenditures(db); err != nil {
+		return err
 	}
 
-	for _, materialPurchase := range MaterialPurchases {
-		var existingMaterialPurchase MaterialPurchase
-		if err := db.FirstOrCreate(&existingMaterialPurchase, MaterialPurchase{PurchaseID: materialPurchase.PurchaseID}).Error; err != nil {
-			return err
-		}
+	if err := insertMaterialPurchases(db); err != nil {
+		return err
 	}
 
-	for _, orderContent := range OrderContents {
-		var existingOrderContent OrderContent
-		if err := db.FirstOrCreate(&existingOrderContent, OrderContent{OrderID: orderContent.OrderID}).Error; err != nil {
-			return err
-		}
+	if err := insertOrderContents(db); err != nil {
+		return err
+	}
+
+	if err := insertBookingToOrders(db); err != nil {
+		return err
 	}
 
 	return nil
+}
+
+func insertServices(db *gorm.DB) error {
+	for _, service := range Services {
+		if service.Name == "" {
+			log.Println("Пропуск пустого названия услуги")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&service, Service{Name: service.Name}).Error; err != nil {
+			return fmtError("услуги", err)
+		}
+	}
+	return nil
+}
+
+func insertMaterials(db *gorm.DB) error {
+	for _, material := range Materials {
+		if material.MaterialName == "" {
+			log.Println("Пропуск пустого названия материала")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&material, Material{MaterialName: material.MaterialName}).Error; err != nil {
+			return fmtError("материала", err)
+		}
+	}
+	return nil
+}
+
+func insertEquipments(db *gorm.DB) error {
+	for _, equipment := range Equipments {
+		if equipment.Brand == "" || equipment.Model == "" {
+			log.Println("Пропуск оборудования с пустым брендом или моделью")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&equipment, Equipment{Brand: equipment.Brand, Model: equipment.Model}).Error; err != nil {
+			return fmtError("оборудования", err)
+		}
+	}
+	return nil
+}
+
+func insertServiceRequirements(db *gorm.DB) error {
+	for _, sr := range ServiceRequirements {
+
+		if sr.ServiceID == 0 || sr.EquipmentID == 0 {
+			log.Println("Пропуск ServiceRequirement с пустыми ServiceID или EquipmentID")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&sr, ServiceRequirement{ServiceID: sr.ServiceID, EquipmentID: sr.EquipmentID}).Error; err != nil {
+			return fmtError("ServiceRequirement", err)
+		}
+	}
+	return nil
+}
+
+func insertClients(db *gorm.DB) error {
+	for _, client := range Clients {
+		if client.FullName == "" || client.PhoneNumber == "" || client.Email == "" {
+			log.Println("Пропуск клиента с пустыми полями")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&client, Client{PhoneNumber: client.PhoneNumber, Email: client.Email}).Error; err != nil {
+			return fmtError("клиента", err)
+		}
+	}
+	return nil
+}
+
+func insertEmployees(db *gorm.DB) error {
+	for _, employee := range Employees {
+		if employee.FullName == "" || employee.Position == "" || employee.PassportData == "" || employee.PhoneNumber == "" {
+			log.Println("Пропуск сотрудника с пустыми полями")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&employee, Employee{PassportData: employee.PassportData, PhoneNumber: employee.PhoneNumber}).Error; err != nil {
+			return fmtError("сотрудника", err)
+		}
+	}
+	return nil
+}
+
+func insertOrders(db *gorm.DB) error {
+	for _, order := range Orders {
+		if order.ServiceName == "" {
+			log.Println("Пропуск заказа с пустым названием услуги")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&order, Order{OrderID: order.OrderID}).Error; err != nil {
+			return fmtError("заказа", err)
+		}
+	}
+	return nil
+}
+
+func insertBookings(db *gorm.DB) error {
+	for _, booking := range Bookings {
+		if booking.BookerFullName == "" || booking.BookingType == "" {
+			log.Println("Пропуск бронирования с пустыми полями")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&booking, Booking{BookingID: booking.BookingID}).Error; err != nil {
+			return fmtError("бронирования", err)
+		}
+	}
+	return nil
+}
+
+func insertMaterialExpenditures(db *gorm.DB) error {
+	for _, me := range MaterialExpenditures {
+		if me.MaterialID == 0 || me.Quantity == 0 {
+			log.Println("Пропуск MaterialExpenditure с пустыми полями")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&me, MaterialExpenditure{ExpenditureID: me.ExpenditureID}).Error; err != nil {
+			return fmtError("MaterialExpenditure", err)
+		}
+	}
+	return nil
+}
+
+func insertMaterialPurchases(db *gorm.DB) error {
+	for _, mp := range MaterialPurchases {
+		if mp.MaterialID == 0 || mp.Supplier == "" {
+			log.Println("Пропуск MaterialPurchase с пустыми полями")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&mp, MaterialPurchase{PurchaseID: mp.PurchaseID}).Error; err != nil {
+			return fmtError("MaterialPurchase", err)
+		}
+	}
+	return nil
+}
+
+func insertOrderContents(db *gorm.DB) error {
+	for _, oc := range OrderContents {
+		if oc.OrderID == 0 || oc.ServiceID == 0 {
+			log.Println("Пропуск OrderContent с пустыми полями")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&oc, OrderContent{OrderID: oc.OrderID, ServiceID: oc.ServiceID}).Error; err != nil {
+			return fmtError("OrderContent", err)
+		}
+	}
+	return nil
+}
+
+func insertBookingToOrders(db *gorm.DB) error {
+	for _, bto := range BookingToOrders {
+		if bto.BookingID == 0 || bto.EmployeeID == 0 || bto.ClientID == 0 {
+			log.Println("Пропуск BookingToOrder с пустыми полями")
+			continue
+		}
+
+		if err := db.FirstOrCreate(&bto, BookingToOrder{ID: bto.ID}).Error; err != nil {
+			return fmtError("BookingToOrder", err)
+		}
+	}
+	return nil
+}
+
+func fmtError(model string, err error) error {
+	return fmt.Errorf("ошибка при создании %s: %w", model, err)
 }

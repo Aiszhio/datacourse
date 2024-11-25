@@ -3,44 +3,40 @@
     <h2>Панель пользователя</h2>
     <h3>Добро пожаловать, {{ userName }}!</h3>
 
-    <!-- Раздел "Ваши заказы" -->
-    <div class="orders-section">
-      <h3>Ваши заказы</h3>
+    <!-- Раздел "Ваши бронирования" -->
+    <div class="bookings-section">
+      <h3>Ваши бронирования</h3>
 
-      <div v-if="loading" class="loading">Загрузка ваших заказов...</div>
+      <div v-if="loadingBookings" class="loading">Загрузка ваших бронирований...</div>
 
       <template v-else>
-        <table v-if="filteredOrders.length" class="order-table">
+        <table v-if="bookings.length" class="booking-table">
           <thead>
           <tr>
             <th>№</th>
-            <th>Имя фотографа</th>
-            <th>Название услуги</th>
-            <th>Дата оформления</th>
-            <th>Дата получения</th>
+            <th>Тип бронирования</th>
+            <th>Время бронирования</th>
           </tr>
           </thead>
           <tbody>
-          <tr v-for="(order, index) in filteredOrders" :key="order.order_id">
+          <tr v-for="(booking, index) in bookings" :key="booking.id">
             <td>{{ index + 1 }}</td>
-            <td>{{ order.employee_name || 'Не назначен' }}</td>
-            <td>{{ order.service_name }}</td>
-            <td>{{ formatDate(order.order_date) }}</td>
-            <td>{{ formatDate(order.receipt_date) }}</td>
+            <td>{{ booking.type || 'Не указано' }}</td>
+            <td>{{ formatDateTime(booking.time) }}</td>
           </tr>
           </tbody>
         </table>
 
-        <div v-else class="no-orders">
-          У вас нет текущих заказов.
+        <div v-else class="no-bookings">
+          У вас нет бронирований.
         </div>
       </template>
     </div>
 
     <!-- Навигационные кнопки -->
     <div class="card-panel">
-      <div @click="goToCreateOrder" class="card">
-        <h4>Сделать заказ</h4>
+      <div @click="goToCreateBooking" class="card">
+        <h4>Сделать бронирование</h4>
       </div>
     </div>
   </div>
@@ -51,18 +47,10 @@ export default {
   name: 'User',
   data() {
     return {
-      userName: '',     // Имя пользователя
-      userRole: '',     // Роль пользователя
-      orders: [],       // Список всех заказов
-      loading: true     // Индикатор загрузки
+      userName: '',           // Имя пользователя
+      bookings: [],           // Список всех бронирований
+      loadingBookings: true,  // Индикатор загрузки бронирований
     };
-  },
-  computed: {
-    filteredOrders() {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Нормализация времени до начала дня
-      return this.orders.filter(order => new Date(order.receipt_date) >= today);
-    }
   },
   mounted() {
     this.initializeData();
@@ -70,7 +58,10 @@ export default {
   methods: {
     async initializeData() {
       try {
-        await Promise.all([this.fetchUserData(), this.fetchOrders()]);
+        await Promise.all([
+          this.fetchUserData(),
+          this.fetchBookings()
+        ]);
       } catch (error) {
         console.error('Ошибка инициализации данных:', error.message);
         this.$router.push({ name: 'home' });
@@ -95,42 +86,44 @@ export default {
 
         const data = await response.json();
         this.userName = data.name;
-        this.userRole = data.role;
       } catch (error) {
         console.error('Ошибка при получении данных пользователя:', error.message);
         this.$router.push({ name: 'home' });
       }
     },
-    async fetchOrders() {
+    async fetchBookings() {
       try {
-        const response = await fetch('http://localhost:8080/api/orders', {
+        const response = await fetch('http://localhost:8080/api/bookings', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
         });
 
         if (!response.ok) {
-          throw new Error('Ошибка при получении заказов');
+          throw new Error('Ошибка при получении бронирований');
         }
 
         const data = await response.json();
-        this.orders = data;
+        // Сервер возвращает { "data": bookingsList }
+        this.bookings = data.data || [];
       } catch (error) {
-        console.error('Ошибка при загрузке заказов:', error.message);
-        alert('Не удалось загрузить историю заказов.');
+        console.error('Ошибка при загрузке бронирований:', error.message);
+        alert('Не удалось загрузить ваши бронирования.');
       } finally {
-        this.loading = false;
+        this.loadingBookings = false;
       }
     },
-    formatDate(dateString) {
+    formatDateTime(dateString) {
       if (!dateString) return "Дата не указана";
-      return new Date(dateString).toLocaleDateString("ru-RU", {
+      return new Date(dateString).toLocaleString("ru-RU", {
         year: "numeric",
         month: "long",
         day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     },
-    goToCreateOrder() {
+    goToCreateBooking() {
       this.$router.push({ name: "ClientOrders" });
     }
   }
@@ -142,33 +135,34 @@ export default {
   padding: 20px;
   margin: 0 auto;
   max-width: 900px;
+  max-height: 100vh;
 }
 
-.orders-section {
+.bookings-section {
   margin-bottom: 20px;
 }
 
-.order-table {
+.booking-table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 20px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.order-table th,
-.order-table td {
+.booking-table th,
+.booking-table td {
   padding: 12px;
   border: 1px solid #ddd;
   text-align: left;
 }
 
-.order-table th {
+.booking-table th {
   background-color: #f2f2f2;
   font-weight: bold;
 }
 
 .loading,
-.no-orders {
+.no-bookings {
   text-align: center;
   font-size: 1.2em;
   color: #555;

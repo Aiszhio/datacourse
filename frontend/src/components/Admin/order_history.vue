@@ -36,10 +36,15 @@
       </button>
     </div>
 
+    <!-- Индикатор загрузки -->
+    <div v-if="isLoading" class="loading">
+      Загрузка заказов...
+    </div>
+
     <!-- Раздел истории заказов -->
-    <div class="order-list-section">
+    <div class="order-list-section" v-else>
       <h3>Список заказов</h3>
-      <table>
+      <table class="data-table">
         <thead>
         <tr>
           <th>Номер заказа</th>
@@ -48,80 +53,19 @@
           <th>Название услуги</th>
           <th>Дата оформления</th>
           <th>Дата получения</th>
-          <th>Действия</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="order in orders" :key="order.id">
+        <tr v-for="order in sortedOrders" :key="order.id">
           <td>{{ order.id }}</td>
           <td>{{ order.clientName }}</td>
           <td>{{ order.employeeName }}</td>
           <td>{{ order.service }}</td>
           <td>{{ formatDate(order.orderDate) }}</td>
           <td>{{ formatDate(order.receiveDate) }}</td>
-          <td>
-            <button @click="openEditOrderModal(order)" class="btn">Редактировать</button>
-            <button @click="deleteOrder(order.id)" class="btn danger">Удалить</button>
-          </td>
         </tr>
         </tbody>
       </table>
-    </div>
-
-    <!-- Модальное окно для редактирования заказа -->
-    <div v-if="showEditOrderModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Редактировать заказ</h3>
-
-        <!-- Отображение имен клиента и сотрудника как статичных полей -->
-        <label>Имя клиента</label>
-        <input
-            v-model="currentOrder.clientName"
-            class="input"
-            placeholder="Имя клиента"
-            required
-            readonly
-        />
-
-        <label>Имя сотрудника</label>
-        <input
-            v-model="currentOrder.employeeName"
-            class="input"
-            placeholder="Имя сотрудника"
-            required
-            readonly
-        />
-
-        <label for="service">Название услуги</label>
-        <input
-            id="service"
-            v-model="currentOrder.service"
-            class="input"
-            placeholder="Название услуги"
-            required
-        />
-
-        <label for="orderDate">Дата оформления</label>
-        <input
-            id="orderDate"
-            type="date"
-            v-model="currentOrder.orderDate"
-            class="input"
-            required
-        />
-
-        <label for="receiveDate">Дата получения</label>
-        <input
-            id="receiveDate"
-            type="date"
-            v-model="currentOrder.receiveDate"
-            class="input"
-            required
-        />
-
-        <button @click="saveOrder" class="btn">Сохранить</button>
-        <button @click="closeEditOrderModal" class="btn danger">Отмена</button>
-      </div>
     </div>
 
     <!-- Панель навигации -->
@@ -158,8 +102,6 @@ export default {
   data() {
     return {
       orders: [],
-      showEditOrderModal: false,
-      currentOrder: {},
       sortOrders: {
         clientName: 'asc',
         employeeName: 'asc',
@@ -168,76 +110,20 @@ export default {
         receiveDate: 'asc',
       },
       currentSortKey: '',
+      isLoading: true, // Состояние загрузки
     };
   },
-  created() {
-    this.fetchOrders();
-  },
-  methods: {
-    async fetchOrders() {
-      try {
-        const response = await axios.get('http://localhost:8080/api/orders/admin', {
-          withCredentials: true, // Отправка куки с запросом
-        });
-        this.orders = response.data.orders;
-      } catch (error) {
-        console.error('Ошибка при загрузке заказов:', error);
+  computed: {
+    sortedOrders() {
+      if (!this.currentSortKey) {
+        return this.orders;
       }
-    },
-    async deleteOrder(id) {
-      if (!confirm(`Вы уверены, что хотите удалить заказ #${id}?`)) return;
-      try {
-        await axios.delete(`http://localhost:8080/api/orders/${id}`, {
-          withCredentials: true, // Отправка куки с запросом
-        });
-        this.orders = this.orders.filter((order) => order.id !== id);
-        alert(`Заказ #${id} удален.`);
-      } catch (error) {
-        console.error(`Ошибка при удалении заказа #${id}:`, error);
-        alert('Не удалось удалить заказ.');
-      }
-    },
-    openEditOrderModal(order) {
-      this.currentOrder = { ...order };
-      this.showEditOrderModal = true;
-    },
-    closeEditOrderModal() {
-      this.showEditOrderModal = false;
-      this.currentOrder = {};
-    },
-    async saveOrder() {
-      try {
-        await axios.put(`http://localhost:8080/api/orders/${this.currentOrder.id}`, this.currentOrder, {
-          withCredentials: true, // Отправка куки с запросом
-        });
-        const index = this.orders.findIndex((order) => order.id === this.currentOrder.id);
-        if (index !== -1) {
-          this.orders.splice(index, 1, { ...this.currentOrder });
-          alert(`Заказ #${this.currentOrder.id} обновлен.`);
-        }
-        this.closeEditOrderModal();
-      } catch (error) {
-        console.error(`Ошибка при обновлении заказа #${this.currentOrder.id}:`, error);
-        alert('Не удалось обновить заказ.');
-      }
-    },
-    sortBy(key) {
-      if (this.currentSortKey === key) {
-        // Переключение направления сортировки
-        this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
-      } else {
-        // Установка направления сортировки по умолчанию (возрастание) для нового ключа
-        this.sortOrders[key] = 'asc';
-        this.currentSortKey = key;
-      }
-
-      const direction = this.sortOrders[key];
-      this.orders.sort((a, b) => {
-        let aVal = a[key];
-        let bVal = b[key];
+      return [...this.orders].sort((a, b) => {
+        let aVal = a[this.currentSortKey];
+        let bVal = b[this.currentSortKey];
 
         // Для дат преобразуем в объекты Date
-        if (key === 'orderDate' || key === 'receiveDate') {
+        if (this.currentSortKey === 'orderDate' || this.currentSortKey === 'receiveDate') {
           aVal = new Date(aVal);
           bVal = new Date(bVal);
         } else {
@@ -246,10 +132,39 @@ export default {
           bVal = bVal.toString().toLowerCase();
         }
 
-        if (aVal < bVal) return direction === 'asc' ? -1 : 1;
-        if (aVal > bVal) return direction === 'asc' ? 1 : -1;
+        if (aVal < bVal) return this.sortOrders[this.currentSortKey] === 'asc' ? -1 : 1;
+        if (aVal > bVal) return this.sortOrders[this.currentSortKey] === 'asc' ? 1 : -1;
         return 0;
       });
+    },
+  },
+  methods: {
+    async fetchOrders() {
+      this.isLoading = true; // Начинаем загрузку
+      try {
+        const response = await axios.get('http://localhost:8080/api/orders/admin', {
+          withCredentials: true, // Отправка куки с запросом
+        });
+        this.orders = response.data.orders || [];
+        // Устанавливаем начальную сортировку после загрузки данных
+        if (this.currentSortKey) {
+          this.sortBy(this.currentSortKey);
+        }
+      } catch (error) {
+        console.error('Ошибка при загрузке заказов:', error);
+        alert('Не удалось загрузить заказы.');
+      } finally {
+        this.isLoading = false; // Завершаем загрузку
+      }
+    },
+    sortBy(key) {
+      if (this.currentSortKey === key) {
+        // Переключаем направление сортировки
+        this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
+      } else {
+        // Устанавливаем новое поле сортировки
+        this.currentSortKey = key;
+      }
     },
     formatDate(dateString) {
       const date = new Date(dateString);
@@ -270,6 +185,9 @@ export default {
     goToServicesPage() {
       this.$router.push({ name: 'Services' });
     },
+  },
+  mounted() {
+    this.fetchOrders();
   },
 };
 </script>

@@ -6,26 +6,24 @@ import (
 	"time"
 )
 
-func (order *ClientOrder) UnmarshalJSON(data []byte) error {
-	type Alias ClientOrder
+func (u *UserBooking) UnmarshalJSON(data []byte) error {
+	type Alias UserBooking
 	aux := &struct {
-		OrderDate string `json:"orderDate"`
+		BookingTime string `json:"booking_time"`
 		*Alias
 	}{
-		Alias: (*Alias)(order),
+		Alias: (*Alias)(u),
 	}
 
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return fmt.Errorf("invalid JSON structure: %v", err)
 	}
 
-	fmt.Println("Raw orderDate from JSON:", aux.OrderDate)
-
-	parsedTime, err := time.Parse(time.RFC3339, aux.OrderDate)
+	parsedTime, err := time.Parse(time.RFC3339, aux.BookingTime)
 	if err != nil {
-		return fmt.Errorf("invalid date format for orderDate: %v", err)
+		return fmt.Errorf("invalid date format for booking_time: %v", err)
 	}
 
-	order.OrderDate = parsedTime
+	u.BookingTime = parsedTime
 	return nil
 }

@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetBookings(db *gorm.DB) fiber.Handler {
+func GetAdminBookings(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var bookingsList []database.Booking
 

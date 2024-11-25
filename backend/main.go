@@ -43,11 +43,12 @@ func main() {
 
 	webApp.Post("/api/login", Authentification.Authorize(dbu, rdb))
 	webApp.Get("/api/CheckRole", Authentification.CheckUserRole(rdb))
-	webApp.Get("/api/user", handlers.GetUserData(rdb))
+	webApp.Get("/api/user", handlers.GetUserName(rdb))
 	webApp.Get("/api/orders", handlers.ClientOrdersApi(dbu, rdb))
+	webApp.Get("/api/bookings", handlers.GetBookings(dbu, rdb))
 	webApp.Get("/api/orders/worker", handlers.WorkerOrdersApi(dbu, rdb))
 	webApp.Get("/api/services", handlers.GetServices(dbu))
-	webApp.Post("/api/createOrder", handlers.CreateOrder(dbu, rdb))
+	webApp.Post("/api/createOrder", handlers.CreateBooking(dbu, rdb))
 	webApp.Get("/api/employees", handlers.GetEmployees(dbu))
 	webApp.Post("/api/employees", handlers.AddEmployee(dbu))
 	webApp.Get("/api/orders/admin", handlers.GetAdminOrders(dbu))
@@ -55,7 +56,7 @@ func main() {
 	webApp.Get("/api/expenditures", handlers.GetMaterialExpenditures(dbu))
 	webApp.Get("/api/purchases", handlers.GetMaterialPurchases(dbu))
 	webApp.Get("/api/services/admin", handlers.GetServicesAndEquipment(dbu))
-	webApp.Get("/api/bookings/admin", handlers.GetBookings(dbu))
+	webApp.Get("/api/bookings/admin", handlers.GetAdminBookings(dbu))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))

@@ -2,7 +2,7 @@
   <div class="client-orders-container">
     <h2>История заказов</h2>
 
-    <!-- Таблица с историей заказов -->
+    <!-- Секция с заказами -->
     <div class="orders-section">
       <div v-if="loading" class="loading">Загрузка истории заказов...</div>
 
@@ -20,83 +20,35 @@
         <tr v-for="(order, index) in pastOrders" :key="order.order_id">
           <td>{{ index + 1 }}</td>
           <td>{{ order.employee_name || 'Не назначен' }}</td>
-          <td>
-            <ul>
-              <li v-for="content in order.order_contents" :key="content.id">
-                {{ content.service.name }} — {{ content.service.price }}₽
-              </li>
-            </ul>
-          </td>
+          <td>{{ order.service_name || 'Нет услуг' }}</td>
           <td>{{ formatDate(order.order_date) }}</td>
           <td>{{ formatDate(order.receipt_date) }}</td>
         </tr>
         </tbody>
       </table>
 
-      <div v-else class="no-orders">
-        У вас нет завершенных заказов.
-      </div>
+      <div v-else class="no-orders">У вас нет завершенных заказов.</div>
     </div>
 
-    <!-- Форма для создания нового заказа -->
-    <div class="new-order-section">
-      <h3>Сделать новый заказ</h3>
-      <form @submit.prevent="addToCart">
-        <label for="service">Выберите услугу:</label>
-        <select v-model="selectedService" id="service" required>
-          <option disabled value="">-- Выберите услугу --</option>
-          <option v-for="service in services" :key="service.service_id" :value="service.service_id">
-            {{ service.service_name }} — {{ service.price }}₽
-          </option>
-        </select>
-
-        <button type="button" class="btn" @click="addToCart" :disabled="!selectedService">
-          Добавить в корзину
-        </button>
+    <!-- Секция бронирования -->
+    <div class="booking-section">
+      <h3>Забронировать время</h3>
+      <form @submit.prevent="submitBooking">
+        <div class="form-group">
+          <label for="bookingDate">Дата и время бронирования:</label>
+          <input
+              type="datetime-local"
+              v-model="bookingDate"
+              id="bookingDate"
+              :min="currentDateTime"
+              required
+          />
+        </div>
+        <button type="submit" class="btn" :disabled="!bookingDate">Забронировать</button>
       </form>
-
-      <!-- Выбор даты бронирования -->
-      <div class="date-selection">
-        <label for="bookingDate">Дата и время бронирования:</label>
-        <input
-            type="datetime-local"
-            v-model="bookingDate"
-            id="bookingDate"
-            :min="currentDateTime"
-            required
-        />
-      </div>
-
-      <!-- Корзина заказов -->
-      <div v-if="cart.length" class="cart-section">
-        <h4>Корзина</h4>
-        <table class="cart-table">
-          <thead>
-          <tr>
-            <th>№</th>
-            <th>Название услуги</th>
-            <th>Цена</th>
-            <th>Действия</th>
-          </tr>
-          </thead>
-          <tbody>
-          <tr v-for="(item, index) in cart" :key="index">
-            <td>{{ index + 1 }}</td>
-            <td>{{ getServiceName(item.service_id) }}</td>
-            <td>{{ getServicePrice(item.service_id) }}₽</td>
-            <td>
-              <button type="button" class="remove-btn" @click="removeFromCart(index)">Удалить</button>
-            </td>
-          </tr>
-          </tbody>
-        </table>
-        <button type="button" class="btn submit-btn" @click="submitOrder" :disabled="!bookingDate">
-          Оформить заказ
-        </button>
-      </div>
     </div>
 
-    <!-- Навигационные кнопки -->
+    <!-- Навигация -->
     <div class="card-panel">
       <div @click="goToHome" class="card">
         <h4>На главную</h4>
@@ -112,11 +64,9 @@ export default {
     return {
       orders: [],
       loading: false,
-      selectedService: '',
       bookingDate: '',
-      services: [],
-      cart: [],
       currentDateTime: '',
+      bookerFullName: '',
     };
   },
   computed: {
@@ -127,8 +77,8 @@ export default {
   },
   mounted() {
     this.updateCurrentDateTime();
-    this.fetchData('orders');
-    this.fetchData('services');
+    this.fetchUserData();
+    this.fetchOrders();
     this.interval = setInterval(this.updateCurrentDateTime, 60000);
   },
   beforeUnmount() {
@@ -136,78 +86,59 @@ export default {
   },
   methods: {
     updateCurrentDateTime() {
-      const now = new Date();
-      this.currentDateTime = now.toISOString().slice(0, 16);
+      this.currentDateTime = new Date().toISOString().slice(0, 16);
     },
-    async fetchData(type) {
-      this.loading = type === 'orders';
+    async fetchOrders() {
+      this.loading = true;
       try {
-        const endpoint = type === 'orders' ? 'orders' : 'services';
-        const response = await fetch(`http://localhost:8080/api/${endpoint}`, {
+        const response = await fetch("http://localhost:8080/api/orders", {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
         });
 
-        if (!response.ok) throw new Error(`Ошибка при получении ${type === 'orders' ? 'заказов' : 'услуг'}`);
+        if (!response.ok) throw new Error('Ошибка при получении истории заказов');
 
         const data = await response.json();
-        if (type === 'orders') {
-          // Предполагается, что сервер возвращает Order вместе с OrderContent
-          this.orders = data.map(order => ({
-            ...order,
-            order_contents: order.order_contents || [],
-          }));
-        } else {
-          this.services = data;
-        }
+        this.orders = data;
       } catch (error) {
         console.error("Ошибка:", error.message);
-        alert(`Не удалось загрузить ${type === 'orders' ? 'историю заказов' : 'список услуг'}.`);
+        alert("Не удалось загрузить историю заказов.");
       } finally {
-        if (type === 'orders') this.loading = false;
+        this.loading = false;
       }
     },
-    addToCart() {
-      if (!this.selectedService) {
-        alert("Пожалуйста, выберите услугу.");
-        return;
+    async fetchUserData() {
+      try {
+        const response = await fetch("http://localhost:8080/api/user", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+
+        if (!response.ok) throw new Error("Не удалось получить данные пользователя.");
+
+        const userData = await response.json();
+        this.bookerFullName = userData.name || '';
+      } catch (error) {
+        console.error("Ошибка при получении данных пользователя:", error.message);
+        alert("Не удалось получить информацию о пользователе. Пожалуйста, попробуйте снова позже.");
       }
-
-      // Проверка, добавлена ли уже эта услуга в корзину
-      const exists = this.cart.find(item => item.service_id === this.selectedService);
-      if (exists) {
-        alert("Эта услуга уже добавлена в корзину.");
-        return;
-      }
-
-      this.cart.push({
-        service_id: this.selectedService,
-      });
-
-      // Очистка поля выбора
-      this.selectedService = '';
     },
-    removeFromCart(index) {
-      this.cart.splice(index, 1);
-    },
-    async submitOrder() {
-      if (!this.cart.length) {
-        alert("Корзина пуста.");
-        return;
-      }
-
+    async submitBooking() {
       if (!this.bookingDate) {
         alert("Пожалуйста, выберите дату бронирования.");
         return;
       }
 
       try {
+        // Добавляем секунды и смещение часового пояса для Москвы
+        const bookingTime = `${this.bookingDate}:00+03:00`;
+
         const payload = {
-          booking_date: new Date(this.bookingDate).toISOString(),
-          services: this.cart.map(item => ({
-            service_id: item.service_id,
-          })),
+          booking_type: "Онлайн",
+          booking_time: bookingTime,
+          booker_full_name: this.bookerFullName,
         };
 
         const response = await fetch("http://localhost:8080/api/createOrder", {
@@ -220,28 +151,20 @@ export default {
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.error || "Не удалось создать заказ.");
+          throw new Error(result.error || "Не удалось забронировать время.");
         }
 
-        alert("Заказ успешно создан!");
-        this.resetCart();
-        this.fetchData('orders');
+        // Отображение имени сотрудника в alert
+        alert(`Вы успешно сделали бронь, Ваш фотограф: ${result.worker}`);
+
+        this.resetBookingForm();
       } catch (error) {
-        console.error("Ошибка при создании заказа:", error.message);
-        alert(error.message || "Не удалось создать заказ.");
+        console.error("Ошибка при бронировании:", error.message);
+        alert(error.message || "Не удалось забронировать время.");
       }
     },
-    resetCart() {
-      this.cart = [];
+    resetBookingForm() {
       this.bookingDate = '';
-    },
-    getServiceName(service_id) {
-      const service = this.services.find(s => s.service_id === service_id);
-      return service ? service.service_name : 'Неизвестная услуга';
-    },
-    getServicePrice(service_id) {
-      const service = this.services.find(s => s.service_id === service_id);
-      return service ? service.price : '0';
     },
     formatDate(dateString) {
       if (!dateString) return "Дата не указана";

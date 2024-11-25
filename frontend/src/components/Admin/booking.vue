@@ -2,6 +2,40 @@
   <div class="bookings-dashboard">
     <h2>Управление бронированием</h2>
 
+    <!-- Раздел сортировки бронирований -->
+    <div class="sort-buttons">
+      <button @click="sortBy('id')" class="btn">
+        Сортировать по номеру брони
+        <span v-if="currentSortKey === 'id'">
+          {{ sortOrders.id === 'asc' ? '▲' : '▼' }}
+        </span>
+      </button>
+      <button @click="sortBy('type')" class="btn">
+        Сортировать по типу брони
+        <span v-if="currentSortKey === 'type'">
+          {{ sortOrders.type === 'asc' ? '▲' : '▼' }}
+        </span>
+      </button>
+      <button @click="sortBy('orderId')" class="btn">
+        Сортировать по номеру заказа
+        <span v-if="currentSortKey === 'orderId'">
+          {{ sortOrders.orderId === 'asc' ? '▲' : '▼' }}
+        </span>
+      </button>
+      <button @click="sortBy('time')" class="btn">
+        Сортировать по времени брони
+        <span v-if="currentSortKey === 'time'">
+          {{ sortOrders.time === 'asc' ? '▲' : '▼' }}
+        </span>
+      </button>
+      <button @click="sortBy('name')" class="btn">
+        Сортировать по ФИО бронирующего
+        <span v-if="currentSortKey === 'name'">
+          {{ sortOrders.name === 'asc' ? '▲' : '▼' }}
+        </span>
+      </button>
+    </div>
+
     <!-- Таблица с бронированиями -->
     <div class="table-section">
       <h3>Брони</h3>
@@ -13,18 +47,17 @@
           <th>Номер заказа</th>
           <th>Время брони</th>
           <th>ФИО бронирующего</th>
-          <th>Действия</th> <!-- Добавляем столбец Действия -->
+          <th>Действия</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="booking in bookings" :key="booking.id">
+        <tr v-for="booking in sortedBookings" :key="booking.id">
           <td>{{ booking.id }}</td>
           <td>{{ booking.type }}</td>
           <td>{{ booking.orderId }}</td>
           <td>{{ formatDate(booking.time) }}</td>
           <td>{{ booking.name }}</td>
           <td>
-            <!-- Проверяем, является ли бронирование предстоящим -->
             <button
                 v-if="isUpcoming(booking.time)"
                 @click="editBooking(booking)"
@@ -111,8 +144,41 @@ export default {
       showModal: false,
       modalTitle: '',
       currentItem: {},
-      formattedBookingTime: ''
+      formattedBookingTime: '',
+      sortOrders: {
+        id: 'asc',
+        type: 'asc',
+        orderId: 'asc',
+        time: 'asc',
+        name: 'asc',
+      },
+      currentSortKey: '',
     };
+  },
+  computed: {
+    sortedBookings() {
+      if (!this.currentSortKey) {
+        return this.bookings;
+      }
+      return [...this.bookings].sort((a, b) => {
+        let aVal = a[this.currentSortKey];
+        let bVal = b[this.currentSortKey];
+
+        // Для даты преобразуем в объекты Date
+        if (this.currentSortKey === 'time') {
+          aVal = new Date(aVal);
+          bVal = new Date(bVal);
+        } else {
+          // Приводим к строкам для сравнения
+          aVal = aVal.toString().toLowerCase();
+          bVal = bVal.toString().toLowerCase();
+        }
+
+        if (aVal < bVal) return this.sortOrders[this.currentSortKey] === 'asc' ? -1 : 1;
+        if (aVal > bVal) return this.sortOrders[this.currentSortKey] === 'asc' ? 1 : -1;
+        return 0;
+      });
+    },
   },
   methods: {
     async fetchBookings() {
@@ -208,7 +274,16 @@ export default {
     },
     goToServicesPage() {
       this.$router.push({ name: 'Services' });
-    }
+    },
+    sortBy(key) {
+      if (this.currentSortKey === key) {
+        // Переключаем направление сортировки
+        this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
+      } else {
+        // Устанавливаем новый ключ сортировки и направление по умолчанию
+        this.currentSortKey = key;
+      }
+    },
   },
   mounted() {
     this.fetchBookings();

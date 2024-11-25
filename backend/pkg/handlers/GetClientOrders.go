@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type OrderWithNamesss struct {
+type namedOrder struct {
 	OrderID      int       `json:"order_id"`
 	ClientName   string    `json:"client_name"`
 	EmployeeName string    `json:"employee_name"`
@@ -59,7 +59,7 @@ func ClientOrdersApi(db *gorm.DB, client *redis.Client) fiber.Handler {
 
 		fmt.Println("Worker ID retrieved from Redis:", clientID)
 
-		var orders []OrderWithNamesss
+		var orders []namedOrder
 
 		if err = db.Table("orders").
 			Select("orders.order_id, employees.full_name as employee_name, clients.full_name as client_name, "+

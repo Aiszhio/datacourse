@@ -6,14 +6,20 @@ import (
 	"time"
 )
 
-func SetWorker(db *gorm.DB, orderStart time.Time, orderEnd time.Time) (int, error) {
+func SetWorker(db *gorm.DB, orderStart time.Time) (int, error) {
 	var busyWorkerIDs []int
-	err := db.Table("orders").
-		Select("DISTINCT orders.employee_id").
-		Joins("LEFT JOIN employees ON employees.employee_id = orders.employee_id").
-		Where("orders.order_date < ? AND orders.receipt_date > ?", orderEnd, orderStart).
+
+	loc, err := time.LoadLocation("Europe/Moscow")
+	orderStart = orderStart.In(loc)
+
+	orderEnd := orderStart.Add(time.Hour)
+
+	err = db.Table("booking_to_orders").
+		Select("distinct booking_to_orders.employee_id").
+		Joins("LEFT JOIN employees ON booking_to_orders.employee_id = employees.employee_id").
+		Where("booking_to_orders.order_date < ? AND booking_to_orders.order_end > ?", orderEnd, orderStart).
 		Where("employees.position = ?", "Фотограф").
-		Pluck("orders.employee_id", &busyWorkerIDs).Error
+		Pluck("booking_to_orders.employee_id", &busyWorkerIDs).Error
 	if err != nil {
 		return 0, fmt.Errorf("ошибка при поиске занятых работников: %v", err)
 	}

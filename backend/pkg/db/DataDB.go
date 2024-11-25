@@ -12,7 +12,7 @@ type Client struct {
 }
 
 type Order struct {
-	OrderID     int       `gorm:"column:order_id" json:"id"`
+	OrderID     int       `gorm:"column:order_id;primaryKey" json:"id"`
 	ClientID    int       `gorm:"column:client_id" json:"clientId"`
 	EmployeeID  int       `gorm:"column:employee_id" json:"employeeId"`
 	ServiceName string    `gorm:"column:service_name" json:"service"`
@@ -73,13 +73,22 @@ type Equipment struct {
 }
 
 type ServiceRequirement struct {
-	ServiceID   int `gorm:"column:service_id;primaryKey;autoIncrement"`
+	ServiceID   int `gorm:"column:service_id;primaryKey"`
 	EquipmentID int `gorm:"column:equipment_id;primaryKey"`
 }
 
 type OrderContent struct {
-	OrderID   int `gorm:"column:order_id;primaryKey;autoIncrement"`
+	OrderID   int `gorm:"column:order_id;primaryKey"`
 	ServiceID int `gorm:"column:service_id;primaryKey"`
+}
+
+type BookingToOrder struct {
+	ID         int       `gorm:"column:id;primaryKey;autoIncrement"`
+	BookingID  int       `gorm:"column:booking_id;not null"`
+	EmployeeID int       `gorm:"column:employee_id;not null"`
+	ClientID   int       `gorm:"column:client_id;not null"`
+	OrderDate  time.Time `gorm:"column:order_date;not null"`
+	OrderEnd   time.Time `gorm:"column:order_end;not null"`
 }
 
 var Services = []Service{}
@@ -103,3 +112,5 @@ var MaterialExpenditures = []MaterialExpenditure{}
 var MaterialPurchases = []MaterialPurchase{}
 
 var OrderContents = []OrderContent{}
+
+var BookingToOrders = []BookingToOrder{}
