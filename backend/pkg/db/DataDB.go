@@ -28,6 +28,7 @@ type Employee struct {
 	BirthDate    time.Time `gorm:"column:birth_date;not null" json:"birth_date"`
 	PassportData string    `gorm:"column:passport_data;not null;unique" json:"passport_data"`
 	PhoneNumber  string    `gorm:"column:phone_number;not null;unique" json:"phone_number"`
+	Status       string    `gorm:"column:status;not null;default:'Работает'" json:"status"`
 }
 
 type Service struct {
@@ -83,12 +84,12 @@ type OrderContent struct {
 }
 
 type BookingToOrder struct {
-	ID         int       `gorm:"column:id;primaryKey;autoIncrement"`
-	BookingID  int       `gorm:"column:booking_id;not null"`
-	EmployeeID int       `gorm:"column:employee_id;not null"`
-	ClientID   int       `gorm:"column:client_id;not null"`
-	OrderDate  time.Time `gorm:"column:order_date;not null"`
-	OrderEnd   time.Time `gorm:"column:order_end;not null"`
+	ID         int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
+	BookingID  int       `gorm:"column:booking_id;not null" json:"booking_id"`
+	EmployeeID int       `gorm:"column:employee_id;not null" json:"employee_id"`
+	ClientID   int       `gorm:"column:client_id;not null" json:"client_id"`
+	OrderDate  time.Time `gorm:"column:order_date;not null" json:"orderDate"`
+	OrderEnd   time.Time `gorm:"column:order_end;not null" json:"orderEnd"`
 }
 
 var Services = []Service{}

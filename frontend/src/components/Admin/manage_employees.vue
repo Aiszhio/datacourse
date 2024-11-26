@@ -8,15 +8,16 @@
         <label for="name">ФИО</label>
         <input
             type="text"
-            v-model="newEmployee.name"
+            v-model="newEmployee.full_name"
             placeholder="ФИО сотрудника"
             required
+            maxlength="50"
         />
 
         <label for="position">Должность</label>
         <select class="position"
-            v-model="newEmployee.position"
-            required
+                v-model="newEmployee.position"
+                required
         >
           <option disabled value="">Выберите должность</option>
           <option>Фотограф</option>
@@ -26,14 +27,14 @@
         <label for="hireDate">Дата оформления</label>
         <input
             type="date"
-            v-model="newEmployee.hireDate"
+            v-model="newEmployee.hire_date"
             required
         />
 
         <label for="birthDate">День рождения</label>
         <input
             type="date"
-            v-model="newEmployee.birthDate"
+            v-model="newEmployee.birth_date"
             :max="minBirthDate"
             required
         />
@@ -41,21 +42,19 @@
         <label for="passport">Паспортные данные</label>
         <input
             type="text"
-            v-model="newEmployee.passport"
+            v-model="formattedPassportData"
             placeholder="Паспортные данные"
             required
             maxlength="10"
-            @input="sanitizePassport"
         />
 
         <label for="phone">Номер телефона</label>
         <input
             type="tel"
-            v-model="newEmployee.phone"
+            v-model="formattedPhoneNumber"
             placeholder="Номер телефона"
             required
-            maxlength="11"
-            @input="sanitizePhone"
+            maxlength="12"
         />
 
         <button type="submit" class="btn">Добавить сотрудника</button>
@@ -78,6 +77,7 @@
           <th>День рождения</th>
           <th>Паспортные данные</th>
           <th>Номер телефона</th>
+          <th>Статус</th> <!-- Новый столбец -->
           <th>Действия</th>
         </tr>
         </thead>
@@ -88,11 +88,21 @@
           <td>{{ employee.position }}</td>
           <td>{{ formatDate(employee.hireDate) }}</td>
           <td>{{ formatDate(employee.birthDate) }}</td>
-          <td>{{ employee.passport }}</td>
-          <td>{{ employee.phone }}</td>
+          <td>{{ employee.passport_data }}</td>
+          <td>{{ formatPhoneNumber(employee.phone_number) }}</td>
+          <td>
+            <span :class="{'status-working': employee.status === 'Работает', 'status-fired': employee.status === 'Уволен'}">
+              {{ employee.status }}
+            </span>
+          </td>
           <td>
             <button @click="openEditEmployeeModal(employee)" class="btn">Редактировать</button>
-            <button @click="deleteEmployee(employee.id)" class="btn danger">Удалить</button>
+            <button
+                v-if="employee.status === 'Работает'"
+                @click="fireEmployee(employee.id)"
+            class="btn danger">
+            Уволить
+            </button>
           </td>
         </tr>
         </tbody>
@@ -118,13 +128,14 @@
               type="text"
               v-model="currentEmployee.name"
               required
+              maxlength="50"
           />
 
           <label for="edit-position">Должность</label>
           <select class="position"
-              id="edit-position"
-              v-model="currentEmployee.position"
-              required
+                  id="edit-position"
+                  v-model="currentEmployee.position"
+                  required
           >
             <option disabled value="">Выберите должность</option>
             <option>Фотограф</option>
@@ -152,20 +163,18 @@
           <input
               id="edit-passport"
               type="text"
-              v-model="currentEmployee.passport"
+              v-model="formattedEditPassportData"
               required
               maxlength="10"
-              @input="sanitizeEditPassport"
           />
 
           <label for="edit-phone">Номер телефона</label>
           <input
               id="edit-phone"
               type="tel"
-              v-model="currentEmployee.phone"
+              v-model="formattedEditPhoneNumber"
               required
-              maxlength="10"
-              @input="sanitizeEditPhone"
+              maxlength="12"
           />
 
           <button type="submit" class="btn">Сохранить</button>
@@ -215,7 +224,16 @@ export default {
       employees: [],
       loadingEmployees: true,
       showEditEmployeeModal: false,
-      currentEmployee: {},
+      currentEmployee: {
+        id: '',
+        name: '',
+        position: '',
+        hireDate: '',
+        birthDate: '',
+        passport_data: '',
+        phone_number: '',
+        status: ''
+      },
       displayCountEmployees: 10,
     };
   },
@@ -230,6 +248,54 @@ export default {
       const today = new Date();
       today.setFullYear(today.getFullYear() - 18);
       return today.toISOString().split('T')[0];
+    },
+    // Вычисляемое свойство для форматирования номера телефона при добавлении
+    formattedPhoneNumber: {
+      get() {
+        const raw = this.newEmployee.phone_number;
+        if (!raw) return '';
+        // Формат: "7-910-157-88-91"
+        return raw.replace(/(\d)(\d{3})(\d{3})(\d{2})(\d{2})/, '$1-$2-$3-$4-$5');
+      },
+      set(value) {
+        // Удаляем все нецифровые символы
+        this.newEmployee.phone_number = value.replace(/\D/g, '').slice(0, 11);
+      }
+    },
+    // Вычисляемое свойство для форматирования паспортных данных при добавлении
+    formattedPassportData: {
+      get() {
+        const raw = this.newEmployee.passport_data;
+        if (!raw) return '';
+        // Формат: "1234 567890"
+        return raw.replace(/(\d{4})(\d{6})/, '$1 $2');
+      },
+      set(value) {
+        // Удаляем все нецифровые символы
+        this.newEmployee.passport_data = value.replace(/\D/g, '').slice(0, 10);
+      }
+    },
+    // Вычисляемое свойство для форматирования номера телефона при редактировании
+    formattedEditPhoneNumber: {
+      get() {
+        const raw = this.currentEmployee.phone_number;
+        if (!raw) return '';
+        return raw.replace(/(\d)(\d{3})(\d{3})(\d{2})(\d{2})/, '$1-$2-$3-$4-$5');
+      },
+      set(value) {
+        this.currentEmployee.phone_number = value.replace(/\D/g, '').slice(0, 11);
+      }
+    },
+    // Вычисляемое свойство для форматирования паспортных данных при редактировании
+    formattedEditPassportData: {
+      get() {
+        const raw = this.currentEmployee.passport_data;
+        if (!raw) return '';
+        return raw.replace(/(\d{4})(\d{6})/, '$1 $2');
+      },
+      set(value) {
+        this.currentEmployee.passport_data = value.replace(/\D/g, '').slice(0, 10);
+      }
     }
   },
   methods: {
@@ -252,14 +318,18 @@ export default {
 
         // Предполагается, что сервер возвращает объект с ключом 'employees', содержащим массив
         this.employees = data.employees.map(employee => ({
-          id: employee.employee_id,
+          id: employee.id, // Убедитесь, что сервер возвращает 'id'
           name: employee.full_name,
           position: employee.position,
           hireDate: employee.hire_date,
           birthDate: employee.birth_date,
-          passport: employee.passport_data, // Замените на реальное поле из ответа сервера
-          phone: employee.phone_number     // Замените на реальное поле из ответа сервера
+          passport_data: employee.passport_data,
+          phone_number: employee.phone_number,
+          status: employee.status
         }));
+
+        console.log("Fetched employees:", this.employees); // Для отладки
+
       } catch (error) {
         console.error('Ошибка при загрузке сотрудников:', error.message);
         alert('Не удалось загрузить сотрудников.');
@@ -270,10 +340,10 @@ export default {
     // Добавление нового сотрудника
     async addEmployee() {
       // Валидация: убедимся, что сотрудник старше 18 лет
-      const { name, position, hireDate, birthDate, passport, phone } = this.newEmployee;
+      const { full_name, position, hire_date, birth_date, passport_data, phone_number } = this.newEmployee;
 
       // Валидация возраста
-      const birthDateObj = new Date(birthDate);
+      const birthDateObj = new Date(birth_date);
       const today = new Date();
       today.setFullYear(today.getFullYear() - 18);
       if (birthDateObj > today) {
@@ -283,12 +353,12 @@ export default {
 
       // Форматируем данные для отправки на сервер
       const formattedEmployee = {
-        full_name: name,
+        full_name: full_name,
         position: position,
-        hire_date: new Date(hireDate).toISOString(),
-        birth_date: new Date(birthDate).toISOString(),
-        passport_data: passport,
-        phone_number: phone,
+        hire_date: new Date(hire_date).toISOString(),
+        birth_date: new Date(birth_date).toISOString(),
+        passport_data: passport_data.replace(/\s/g, ''), // Удаляем пробелы
+        phone_number: phone_number.replace(/-/g, '')    // Удаляем тире
       };
 
       try {
@@ -302,19 +372,23 @@ export default {
         });
 
         if (!response.ok) {
-          throw new Error('Ошибка при добавлении сотрудника');
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Ошибка при добавлении сотрудника');
         }
 
         const addedEmployee = await response.json();
 
+        console.log("Added employee:", addedEmployee); // Для отладки
+
         this.employees.push({
-          id: addedEmployee.employee_id, // Предполагается, что сервер возвращает EmployeeID
-          full_name: addedEmployee.full_name,
-          position: addedEmployee.position,
-          hire_date: addedEmployee.hire_date,
-          birth_date: addedEmployee.birth_date,
-          passport_data: addedEmployee.passport_data, // Замените на реальное поле из ответа сервера
-          phone_number: addedEmployee.phone_number,   // Замените на реальное поле из ответа сервера
+          id: addedEmployee.worker.id, // Убедитесь, что сервер возвращает 'id' в 'worker'
+          name: addedEmployee.worker.full_name,
+          position: addedEmployee.worker.position,
+          hireDate: addedEmployee.worker.hire_date,
+          birthDate: addedEmployee.worker.birth_date,
+          passport_data: addedEmployee.worker.passport_data,
+          phone_number: addedEmployee.worker.phone_number,
+          status: addedEmployee.worker.status
         });
 
         // Уведомление об успешном добавлении
@@ -322,27 +396,34 @@ export default {
 
         // Сброс формы
         this.newEmployee = {
-          name: '',
+          full_name: '',
           position: '',
-          hireDate: '',
-          birthDate: '',
-          passport: '',
-          phone: '',
+          hire_date: '',
+          birth_date: '',
+          passport_data: '',
+          phone_number: ''
         };
       } catch (error) {
         console.error('Ошибка при добавлении сотрудника:', error.message);
-        alert('Не удалось добавить сотрудника.');
+        alert(`Не удалось добавить сотрудника: ${error.message}`);
       }
     },
-    // Удаление сотрудника
-    async deleteEmployee(id) {
-      if (!confirm('Вы уверены, что хотите удалить этого сотрудника?')) {
+    // Увольнение сотрудника
+    async fireEmployee(id) {
+      console.log("fireEmployee called with id:", id); // Для отладки
+
+      if (!id) {
+        alert('Невозможно уволить сотрудника: ID отсутствует.');
+        return;
+      }
+
+      if (!confirm('Вы уверены, что хотите уволить этого сотрудника?')) {
         return;
       }
 
       try {
-        const response = await fetch(`http://localhost:8080/api/employees/${id}`, {
-          method: 'DELETE',
+        const response = await fetch(`http://localhost:8080/api/employees/${id}/fire`, {
+          method: 'PUT', // Используем PUT запрос
           headers: {
             'Content-Type': 'application/json'
           },
@@ -350,15 +431,26 @@ export default {
         });
 
         if (!response.ok) {
-          throw new Error('Ошибка при удалении сотрудника');
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Ошибка при увольнении сотрудника');
         }
 
-        // Удаление из локального списка
-        this.employees = this.employees.filter(employee => employee.id !== id);
-        alert(`Сотрудник с ID #${id} удалён.`);
+        const responseData = await response.json();
+
+        console.log("Fire response:", responseData); // Для отладки
+
+        // Обновление статуса сотрудника в локальном списке
+        this.employees = this.employees.map(employee => {
+          if (employee.id === id) {
+            return { ...employee, status: 'Уволен' };
+          }
+          return employee;
+        });
+
+        alert(`Сотрудник с ID #${id} успешно уволен.`);
       } catch (error) {
-        console.error('Ошибка при удалении сотрудника:', error.message);
-        alert('Не удалось удалить сотрудника.');
+        console.error('Ошибка при увольнении сотрудника:', error.message);
+        alert(`Не удалось уволить сотрудника: ${error.message}`);
       }
     },
     // Открытие модального окна для редактирования сотрудника
@@ -369,12 +461,21 @@ export default {
     // Закрытие модального окна
     closeEditEmployeeModal() {
       this.showEditEmployeeModal = false;
-      this.currentEmployee = {};
+      this.currentEmployee = {
+        id: '',
+        name: '',
+        position: '',
+        hireDate: '',
+        birthDate: '',
+        passport_data: '',
+        phone_number: '',
+        status: ''
+      };
     },
     // Сохранение изменений сотрудника
     async saveEmployee() {
       // Валидация: убедимся, что сотрудник старше 18 лет
-      const { name, position, hireDate, birthDate, passport, phone } = this.currentEmployee;
+      const { name, position, hireDate, birthDate, passport_data, phone_number, status } = this.currentEmployee;
 
       const birthDateObj = new Date(birthDate);
       const today = new Date();
@@ -391,34 +492,46 @@ export default {
             'Content-Type': 'application/json'
           },
           credentials: 'include',
-          body: JSON.stringify(this.currentEmployee)
+          body: JSON.stringify({
+            full_name: name,
+            position: position,
+            hire_date: new Date(hireDate).toISOString(),
+            birth_date: new Date(birthDate).toISOString(),
+            passport_data: passport_data.replace(/\s/g, ''), // Удаляем пробелы
+            phone_number: phone_number.replace(/-/g, ''),    // Удаляем тире
+            status: status
+          })
         });
 
         if (!response.ok) {
-          throw new Error('Ошибка при обновлении сотрудника');
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Ошибка при обновлении сотрудника');
         }
 
         const updatedEmployee = await response.json();
 
+        console.log("Updated employee:", updatedEmployee); // Для отладки
+
         // Обновление в локальном списке
-        const index = this.employees.findIndex(emp => emp.id === updatedEmployee.EmployeeID);
+        const index = this.employees.findIndex(emp => emp.id === updatedEmployee.worker.id);
         if (index !== -1) {
           this.$set(this.employees, index, {
-            id: updatedEmployee.EmployeeID,
-            name: updatedEmployee.FullName,
-            position: updatedEmployee.Position,
-            hireDate: updatedEmployee.HireDate,
-            birthDate: updatedEmployee.BirthDate,
-            passport: updatedEmployee.PassportData,
-            phone: updatedEmployee.PhoneNumber
+            id: updatedEmployee.worker.id,
+            name: updatedEmployee.worker.full_name,
+            position: updatedEmployee.worker.position,
+            hireDate: updatedEmployee.worker.hire_date,
+            birthDate: updatedEmployee.worker.birth_date,
+            passport_data: updatedEmployee.worker.passport_data,
+            phone_number: updatedEmployee.worker.phone_number,
+            status: updatedEmployee.worker.status
           });
         }
 
-        alert(`Сотрудник с ID #${updatedEmployee.EmployeeID} обновлён.`);
+        alert(`Сотрудник с ID #${updatedEmployee.worker.id} обновлён.`);
         this.closeEditEmployeeModal();
       } catch (error) {
         console.error('Ошибка при обновлении сотрудника:', error.message);
-        alert('Не удалось обновить сотрудника.');
+        alert(`Не удалось обновить сотрудника: ${error.message}`);
       }
     },
     // Форматирование даты с использованием встроенных средств JavaScript
@@ -426,6 +539,11 @@ export default {
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
       const date = new Date(dateString);
       return date.toLocaleDateString('ru-RU', options);
+    },
+    // Форматирование номера телефона для отображения в таблице
+    formatPhoneNumber(rawPhone) {
+      if (!rawPhone) return '';
+      return rawPhone.replace(/(\d)(\d{3})(\d{3})(\d{2})(\d{2})/, '$1-$2-$3-$4-$5');
     },
     // Загрузка дополнительных сотрудников
     loadMoreEmployees() {
@@ -446,21 +564,6 @@ export default {
     },
     goToServicesPage() {
       this.$router.push({ name: 'Services' });
-    },
-    // Метод для очистки нецифровых символов и ограничения длины для паспорта
-    sanitizePassport() {
-      this.newEmployee.passport = this.newEmployee.passport.replace(/\D/g, '').slice(0, 10);
-    },
-    // Метод для очистки нецифровых символов и ограничения длины для телефона
-    sanitizePhone() {
-      this.newEmployee.phone = this.newEmployee.phone.replace(/\D/g, '').slice(0, 10);
-    },
-    // Аналогичные методы для модального окна редактирования
-    sanitizeEditPassport() {
-      this.currentEmployee.passport = this.currentEmployee.passport.replace(/\D/g, '').slice(0, 10);
-    },
-    sanitizeEditPhone() {
-      this.currentEmployee.phone = this.currentEmployee.phone.replace(/\D/g, '').slice(0, 10);
     }
   },
   mounted() {
@@ -502,7 +605,7 @@ label {
 input[type="text"],
 input[type="date"],
 input[type="tel"],
-.input {
+.position {
   padding: 10px;
   margin: 10px 0;
   border: 1px solid #ccc;
@@ -514,14 +617,6 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
-}
-
-.position{
-  padding: 10px;
-  margin: 10px 0;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  width: 92%;
 }
 
 table th,
@@ -573,6 +668,20 @@ table td {
   background-color: #f44336;
 }
 
+.btn:hover {
+  background-color: #45a049;
+}
+
+.status-working {
+  color: green;
+  font-weight: bold;
+}
+
+.status-fired {
+  color: red;
+  font-weight: bold;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -591,9 +700,5 @@ table td {
   border-radius: 10px;
   max-width: 400px;
   width: 100%;
-}
-
-.btn:hover {
-  background-color: #45a049;
 }
 </style>

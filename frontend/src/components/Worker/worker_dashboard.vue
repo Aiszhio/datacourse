@@ -11,20 +11,26 @@
       <table v-else-if="upcomingOrders.length > 0" class="orders-table">
         <thead>
         <tr>
-          <th>№</th>
-          <th>Имя клиента</th>
-          <th>Название услуги</th>
-          <th>Дата оформления</th>
-          <th>Дата получения</th>
+          <th>№</th> <!-- Заголовок для нумерации -->
+          <th>
+            Дата оформления
+            <button @click="sortUpcoming('orderDate')">
+              Сортировать {{ getSortIcon('upcoming', 'orderDate') }}
+            </button>
+          </th>
+          <th>
+            Дата окончания
+            <button @click="sortUpcoming('orderEnd')">
+              Сортировать {{ getSortIcon('upcoming', 'orderEnd') }}
+            </button>
+          </th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="(order, index) in displayedUpcomingOrders" :key="order.OrderID">
-          <td>{{ index + 1 }}</td>
-          <td>{{ order.ClientName }}</td>
-          <td>{{ order.ServiceName }}</td>
-          <td>{{ formatDate(order.OrderDate) }}</td>
-          <td>{{ formatDate(order.ReceiptDate) }}</td>
+        <tr v-for="(order, index) in displayedUpcomingOrders" :key="order.id">
+          <td>{{ index + 1 }}</td> <!-- Нумерация строк -->
+          <td>{{ formatDate(order.orderDate) }}</td>
+          <td>{{ formatDate(order.orderEnd) }}</td>
         </tr>
         </tbody>
       </table>
@@ -34,7 +40,8 @@
       <button
           v-if="canLoadMoreUpcoming"
           @click="loadMoreUpcoming"
-          class="btn show-more-btn">
+          class="btn show-more-btn"
+      >
         Показать ещё
       </button>
     </div>
@@ -42,23 +49,43 @@
     <!-- Раздел "История выполненных заказов" -->
     <div class="orders-section">
       <h3>История выполненных заказов</h3>
-      <table v-if="completedOrders.length > 0" class="orders-table">
+      <table v-if="expiredOrders.length > 0" class="orders-table">
         <thead>
         <tr>
-          <th>№</th>
-          <th>Имя клиента</th>
-          <th>Название услуги</th>
-          <th>Дата оформления</th>
-          <th>Дата получения</th>
+          <th>№</th> <!-- Заголовок для нумерации -->
+          <th>
+            Имя клиента
+            <button @click="sortExpired('clientName')">
+              Сортировать {{ getSortIcon('expired', 'clientName') }}
+            </button>
+          </th>
+          <th>
+            Название услуги
+            <button @click="sortExpired('service')">
+              Сортировать {{ getSortIcon('expired', 'service') }}
+            </button>
+          </th>
+          <th>
+            Время оформления
+            <button @click="sortExpired('orderDate')">
+              Сортировать {{ getSortIcon('expired', 'orderDate') }}
+            </button>
+          </th>
+          <th>
+            Время окончания
+            <button @click="sortExpired('receiveDate')">
+              Сортировать {{ getSortIcon('expired', 'receiveDate') }}
+            </button>
+          </th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="(order, index) in displayedCompletedOrders" :key="order.OrderID">
-          <td>{{ index + 1 }}</td>
-          <td>{{ order.ClientName }}</td>
-          <td>{{ order.ServiceName }}</td>
-          <td>{{ formatDate(order.OrderDate) }}</td>
-          <td>{{ formatDate(order.ReceiptDate) }}</td>
+        <tr v-for="(order, index) in displayedExpiredOrders" :key="order.id">
+          <td>{{ index + 1 }}</td> <!-- Нумерация строк -->
+          <td>{{ order.clientName }}</td>
+          <td>{{ order.service }}</td>
+          <td>{{ formatDate(order.orderDate) }}</td>
+          <td>{{ formatDate(order.receiveDate) }}</td>
         </tr>
         </tbody>
       </table>
@@ -66,9 +93,10 @@
 
       <!-- Кнопка "Показать ещё" для истории заказов -->
       <button
-          v-if="canLoadMoreCompleted"
-          @click="loadMoreCompleted"
-          class="btn show-more-btn">
+          v-if="canLoadMoreExpired"
+          @click="loadMoreExpired"
+          class="btn show-more-btn"
+      >
         Показать ещё
       </button>
     </div>
@@ -77,44 +105,59 @@
 
 <script>
 export default {
-  name: 'WorkerDashboard',
+  name: 'Worker',
   data() {
     return {
-      workerName: '',      // Имя сотрудника
-      orders: [],          // Список заказов
-      loading: true,       // Индикатор загрузки заказов
-      displayCountUpcoming: 10,  // Количество отображаемых предстоящих заказов
-      displayCountCompleted: 10, // Количество отображаемых выполненных заказов
+      workerName: '',             // Имя сотрудника
+      upcomingOrders: [],         // Список предстоящих заказов
+      expiredOrders: [],          // Список выполненных заказов
+      loading: true,              // Индикатор загрузки заказов
+      displayCountUpcoming: 10,   // Количество отображаемых предстоящих заказов
+      displayCountExpired: 10,    // Количество отображаемых выполненных заказов
+      sortConfigUpcoming: {       // Конфигурация сортировки для предстоящих заказов
+        key: 'orderDate',
+        order: 'asc', // 'asc' или 'desc'
+      },
+      sortConfigExpired: {        // Конфигурация сортировки для выполненных заказов
+        key: 'orderDate',
+        order: 'asc',
+      },
     };
   },
   computed: {
-    // Фильтрация предстоящих заказов
-    upcomingOrders() {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Нормализация времени до начала дня
-      return this.orders.filter(order => new Date(order.ReceiptDate) >= today);
-    },
-    // Фильтрация выполненных заказов
-    completedOrders() {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return this.orders.filter(order => new Date(order.ReceiptDate) < today);
-    },
-    // Отображаемые предстоящие заказы с учётом пагинации
+    // Отображаемые предстоящие заказы с учётом пагинации и сортировки
     displayedUpcomingOrders() {
-      return this.upcomingOrders.slice(0, this.displayCountUpcoming);
+      return this.sortedUpcomingOrders.slice(0, this.displayCountUpcoming);
     },
-    // Отображаемые выполненные заказы с учётом пагинации
-    displayedCompletedOrders() {
-      return this.completedOrders.slice(0, this.displayCountCompleted);
+    // Отображаемые выполненные заказы с учётом пагинации и сортировки
+    displayedExpiredOrders() {
+      return this.sortedExpiredOrders.slice(0, this.displayCountExpired);
+    },
+    // Отсортированные предстоящие заказы
+    sortedUpcomingOrders() {
+      return this.upcomingOrders.slice().sort((a, b) => {
+        let modifier = this.sortConfigUpcoming.order === 'asc' ? 1 : -1;
+        if (a[this.sortConfigUpcoming.key] < b[this.sortConfigUpcoming.key]) return -1 * modifier;
+        if (a[this.sortConfigUpcoming.key] > b[this.sortConfigUpcoming.key]) return 1 * modifier;
+        return 0;
+      });
+    },
+    // Отсортированные выполненные заказы
+    sortedExpiredOrders() {
+      return this.expiredOrders.slice().sort((a, b) => {
+        let modifier = this.sortConfigExpired.order === 'asc' ? 1 : -1;
+        if (a[this.sortConfigExpired.key] < b[this.sortConfigExpired.key]) return -1 * modifier;
+        if (a[this.sortConfigExpired.key] > b[this.sortConfigExpired.key]) return 1 * modifier;
+        return 0;
+      });
     },
     // Проверка, можно ли загрузить ещё предстоящие заказы
     canLoadMoreUpcoming() {
       return this.displayCountUpcoming < this.upcomingOrders.length;
     },
     // Проверка, можно ли загрузить ещё выполненные заказы
-    canLoadMoreCompleted() {
-      return this.displayCountCompleted < this.completedOrders.length;
+    canLoadMoreExpired() {
+      return this.displayCountExpired < this.expiredOrders.length;
     }
   },
   async mounted() {
@@ -145,7 +188,6 @@ export default {
       }
     },
     // Получение заказов
-    // Получение заказов
     async fetchOrders() {
       try {
         const response = await fetch('http://localhost:8080/api/orders/worker', {
@@ -162,18 +204,32 @@ export default {
 
         const data = await response.json();
 
-        // Убедитесь, что data.data существует и является массивом
-        if (!data.data || !Array.isArray(data.data)) {
-          throw new Error('Некорректный формат данных');
+        // Проверка формата данных
+        if (!data.upcoming || !Array.isArray(data.upcoming)) {
+          throw new Error('Некорректный формат данных для предстоящих заказов');
         }
 
-        // Преобразование полей из snake_case в PascalCase
-        this.orders = data.data.map(order => ({
-          OrderID: order.order_id,
-          ClientName: order.client_name,
-          ServiceName: order.service_name,
-          OrderDate: order.order_date,
-          ReceiptDate: order.receipt_date
+        if (!data.expired || !Array.isArray(data.expired)) {
+          throw new Error('Некорректный формат данных для выполненных заказов');
+        }
+
+        // Маппинг предстоящих заказов
+        this.upcomingOrders = data.upcoming.map(order => ({
+          id: order.id,
+          bookingId: order.booking_id,
+          employeeId: order.employee_id,
+          clientId: order.client_id,
+          orderDate: order.orderDate,
+          orderEnd: order.orderEnd
+        }));
+
+        // Маппинг выполненных заказов
+        this.expiredOrders = data.expired.map(order => ({
+          id: order.id,
+          clientName: order.clientName,
+          service: order.service,
+          orderDate: order.orderDate,
+          receiveDate: order.receiveDate
         }));
 
       } catch (error) {
@@ -185,17 +241,54 @@ export default {
     },
     // Форматирование даты с использованием встроенных средств JavaScript
     formatDate(dateString) {
-      const options = {year: 'numeric', month: 'long', day: 'numeric'};
+      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
       const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', options);
+      return date.toLocaleString('ru-RU', options);
     },
     // Загрузка дополнительных предстоящих заказов
     loadMoreUpcoming() {
       this.displayCountUpcoming += 10;
     },
     // Загрузка дополнительных выполненных заказов
-    loadMoreCompleted() {
-      this.displayCountCompleted += 10;
+    loadMoreExpired() {
+      this.displayCountExpired += 10;
+    },
+    // Метод для сортировки предстоящих заказов
+    sortUpcoming(key) {
+      if (this.sortConfigUpcoming.key === key) {
+        // Если уже сортируем по этому ключу, переключаем порядок
+        this.sortConfigUpcoming.order = this.sortConfigUpcoming.order === 'asc' ? 'desc' : 'asc';
+      } else {
+        // Иначе устанавливаем новый ключ и порядок по возрастанию
+        this.sortConfigUpcoming.key = key;
+        this.sortConfigUpcoming.order = 'asc';
+      }
+    },
+    // Метод для сортировки выполненных заказов
+    sortExpired(key) {
+      if (this.sortConfigExpired.key === key) {
+        // Если уже сортируем по этому ключу, переключаем порядок
+        this.sortConfigExpired.order = this.sortConfigExpired.order === 'asc' ? 'desc' : 'asc';
+      } else {
+        // Иначе устанавливаем новый ключ и порядок по возрастанию
+        this.sortConfigExpired.key = key;
+        this.sortConfigExpired.order = 'asc';
+      }
+    },
+    // Метод для отображения иконки сортировки
+    getSortIcon(table, key) {
+      let config;
+      if (table === 'upcoming') {
+        config = this.sortConfigUpcoming;
+      } else if (table === 'expired') {
+        config = this.sortConfigExpired;
+      }
+
+      if (config.key !== key) {
+        return '';
+      }
+
+      return config.order === 'asc' ? '↑' : '↓';
     }
   }
 };
@@ -280,5 +373,20 @@ export default {
 .btn:disabled {
   background-color: #a5d6a7;
   cursor: not-allowed;
+}
+
+.orders-table th button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin: 1px;
+}
+
+.orders-table th button:hover {
+  text-decoration: underline;
 }
 </style>

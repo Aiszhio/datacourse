@@ -68,7 +68,7 @@ func AddEmployee(db *gorm.DB) fiber.Handler {
 }
 
 func ValidateEmployeeData(employee database.Employee, c *fiber.Ctx) error {
-	namePattern := `^[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?\s[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?\s[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?$`
+	namePattern := `^[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?(?:\s[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?)?(?:\s[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?)?$`
 	phonePattern := `^[7][0-9]{10}$`
 	passportPattern := `^[0-9]{10}$`
 	reName := regexp.MustCompile(namePattern)

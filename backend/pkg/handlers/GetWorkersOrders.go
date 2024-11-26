@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"github.com/Aiszhio/datacourse.git/pkg/Redis"
+	db2 "github.com/Aiszhio/datacourse.git/pkg/db"
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -10,64 +11,71 @@ import (
 	"time"
 )
 
-type OrderWithClientNames struct {
-	OrderID     int       `json:"order_id"`
-	ClientName  string    `json:"client_name"`
-	ServiceName string    `json:"service_name"`
-	OrderDate   time.Time `json:"order_date"`
-	ReceiptDate time.Time `json:"receipt_date"`
-}
-
 func WorkerOrdersApi(db *gorm.DB, client *redis.Client) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var orders []OrderWithClientNames
-
-		workerMap, err := Redis.GetMultipleKey(client, "UserInfo")
+		userInfo, err := Redis.GetMultipleKey(client, "UserInfo")
 		if err != nil {
-			fmt.Println("Error getting user info")
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "cannot get user info",
+				"error": "Failed to retrieve user info from Redis",
 			})
 		}
 
-		workerID := workerMap["employee_id"]
+		var userID int
 
-		switch v := workerID.(type) {
-		case int:
-			workerID = v
+		switch v := userInfo["employee_id"].(type) {
 		case string:
-			workerID, err = strconv.Atoi(v)
+			userID, err = strconv.Atoi(v)
 			if err != nil {
-				fmt.Println("Error converting workerID to int")
-				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-					"Error": "Error converting workerID to int",
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+					"error": "Invalid employee_id format",
 				})
 			}
+		case int:
+			userID = v
 		case float64:
-			workerID = int(v)
+			userID = int(v)
 		default:
-			fmt.Println("Error: employee_id is not a recognized type (int, float64, or string)")
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Error retrieving employee ID",
+			fmt.Println("Error in type assertion employee id")
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Invalid employee_id type",
 			})
 		}
 
-		if err = db.Table("orders").
-			Select("orders.order_id, clients.full_name as client_name, "+
-				"orders.service_name, orders.order_date, orders.receipt_date").
-			Joins("left join employees on orders.employee_id = employees.employee_id").
-			Joins("left join clients on orders.client_id = clients.client_id").
-			Where("orders.employee_id = ?", workerID).
-			Find(&orders).Error; err != nil {
-			fmt.Println("Error retrieving orders from database:", err)
+		var upcomingOrders []db2.BookingToOrder
+
+		loc, err := time.LoadLocation("Europe/Moscow")
+		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Error retrieving orders from database",
+				"error": "Failed to load time location",
+			})
+		}
+		now := time.Now().In(loc)
+
+		err = db.Table("booking_to_orders").Where("employee_id = ?", userID).Find(&upcomingOrders).Error
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to retrieve upcoming orders",
 			})
 		}
 
-		fmt.Println("Orders successfully fetched: ", orders)
+		var expiredOrdersWithNames []OrdersWithNames
+
+		err = db.Table("orders").
+			Select("orders.order_id as order_id, clients.full_name as client_name,"+
+				" employees.full_name as employee_name, orders.service_name as service_name, orders.order_date, orders.receipt_date").
+			Joins("JOIN clients ON clients.client_id = orders.client_id").
+			Joins("JOIN employees ON employees.employee_id = orders.employee_id").
+			Where("orders.employee_id = ?", userID).Where("orders.order_date < ?", now).
+			Find(&expiredOrdersWithNames).Error
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to retrieve expired orders with names",
+			})
+		}
+
 		return c.JSON(fiber.Map{
-			"data": orders,
+			"upcoming": upcomingOrders,
+			"expired":  expiredOrdersWithNames,
 		})
 	}
 }

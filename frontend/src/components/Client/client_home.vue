@@ -16,6 +16,7 @@
             <th>№</th>
             <th>Тип бронирования</th>
             <th>Время бронирования</th>
+            <th>Действия</th>
           </tr>
           </thead>
           <tbody>
@@ -23,6 +24,11 @@
             <td>{{ index + 1 }}</td>
             <td>{{ booking.type || 'Не указано' }}</td>
             <td>{{ formatDateTime(booking.time) }}</td>
+            <td>
+              <button @click="deleteBooking(booking.id)" class="delete-button">
+                Удалить
+              </button>
+            </td>
           </tr>
           </tbody>
         </table>
@@ -104,7 +110,6 @@ export default {
         }
 
         const data = await response.json();
-        // Сервер возвращает { "data": bookingsList }
         this.bookings = data.data || [];
       } catch (error) {
         console.error('Ошибка при загрузке бронирований:', error.message);
@@ -113,18 +118,32 @@ export default {
         this.loadingBookings = false;
       }
     },
-    formatDateTime(dateString) {
-      if (!dateString) return "Дата не указана";
-      return new Date(dateString).toLocaleString("ru-RU", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+    async deleteBooking(bookingId) {
+      try {
+        const response = await fetch(`http://localhost:8080/api/bookings/${bookingId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Не удалось удалить бронирование');
+        }
+
+        // Удаление из локального массива
+        this.bookings = this.bookings.filter(booking => booking.id !== bookingId);
+        alert('Бронирование успешно удалено');
+      } catch (error) {
+        console.error('Ошибка при удалении бронирования:', error.message);
+        alert('Ошибка при удалении бронирования. Попробуйте снова.');
+      }
     },
     goToCreateBooking() {
       this.$router.push({ name: "ClientOrders" });
+    },
+    formatDateTime(dateTime) {
+      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+      return new Date(dateTime).toLocaleString('ru-RU', options);
     }
   }
 };
@@ -167,6 +186,20 @@ export default {
   font-size: 1.2em;
   color: #555;
   margin-top: 20px;
+}
+
+.delete-button {
+  background-color: #f44336; /* Красный цвет */
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.delete-button:hover {
+  background-color: #d32f2f; /* Темно-красный при наведении */
 }
 
 .card-panel {

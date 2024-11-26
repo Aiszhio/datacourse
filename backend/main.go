@@ -57,6 +57,8 @@ func main() {
 	webApp.Get("/api/purchases", handlers.GetMaterialPurchases(dbu))
 	webApp.Get("/api/services/admin", handlers.GetServicesAndEquipment(dbu))
 	webApp.Get("/api/bookings/admin", handlers.GetAdminBookings(dbu))
+	webApp.Delete("/api/bookings/:bookingID", handlers.DeleteBooking(dbu))
+	webApp.Put("/api/employees/:id/fire", handlers.FireWorker(dbu))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))

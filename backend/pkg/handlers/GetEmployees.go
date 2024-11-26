@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"fmt"
 	database "github.com/Aiszhio/datacourse.git/pkg/db"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"strings"
 )
 
 func GetEmployees(db *gorm.DB) fiber.Handler {
@@ -15,7 +15,10 @@ func GetEmployees(db *gorm.DB) fiber.Handler {
 			return err
 		}
 
-		fmt.Println(employeesList)
+		for i := range employeesList {
+			passportData := strings.TrimSpace(employeesList[i].PassportData)
+			employeesList[i].PassportData = passportData[:4] + " " + passportData[4:]
+		}
 
 		return c.JSON(fiber.Map{
 			"employees": employeesList,
