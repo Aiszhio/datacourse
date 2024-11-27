@@ -5,6 +5,7 @@ import (
 	database "github.com/Aiszhio/datacourse.git/pkg/db"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"sort"
 )
 
 func GetAdminBookings(db *gorm.DB) fiber.Handler {
@@ -18,6 +19,10 @@ func GetAdminBookings(db *gorm.DB) fiber.Handler {
 				"message": err.Error(),
 			})
 		}
+
+		sort.Slice(bookingsList, func(i, j int) bool {
+			return bookingsList[i].BookingID < bookingsList[j].BookingID
+		})
 
 		return c.JSON(fiber.Map{
 			"bookings": bookingsList,

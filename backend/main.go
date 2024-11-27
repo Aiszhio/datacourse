@@ -52,6 +52,7 @@ func main() {
 	webApp.Get("/api/employees", handlers.GetEmployees(dbu))
 	webApp.Post("/api/employees", handlers.AddEmployee(dbu))
 	webApp.Get("/api/orders/admin", handlers.GetAdminOrders(dbu))
+	//webApp.Post("/api/orders/admin", handlers.AddOrder(dbu))
 	webApp.Get("/api/materials", handlers.GetMaterials(dbu))
 	webApp.Get("/api/expenditures", handlers.GetMaterialExpenditures(dbu))
 	webApp.Get("/api/purchases", handlers.GetMaterialPurchases(dbu))
@@ -59,6 +60,9 @@ func main() {
 	webApp.Get("/api/bookings/admin", handlers.GetAdminBookings(dbu))
 	webApp.Delete("/api/bookings/:bookingID", handlers.DeleteBooking(dbu))
 	webApp.Put("/api/employees/:id/fire", handlers.FireWorker(dbu))
+	webApp.Put("/api/employees/:id", handlers.ChangeEmployee(dbu))
+	webApp.Post("/api/createOrder/admin", handlers.AdminCreateBooking(dbu))
+	webApp.Delete("/api/bookings/admin/:bookingId", handlers.DeleteAdminBooking(dbu))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))

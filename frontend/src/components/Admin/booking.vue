@@ -2,38 +2,39 @@
   <div class="bookings-dashboard">
     <h2>Управление бронированием</h2>
 
-    <!-- Раздел сортировки бронирований -->
-    <div class="sort-buttons">
-      <button @click="sortBy('id')" class="btn">
-        Сортировать по номеру брони
-        <span v-if="currentSortKey === 'id'">
-          {{ sortOrders.id === 'asc' ? '▲' : '▼' }}
-        </span>
-      </button>
-      <button @click="sortBy('type')" class="btn">
-        Сортировать по типу брони
-        <span v-if="currentSortKey === 'type'">
-          {{ sortOrders.type === 'asc' ? '▲' : '▼' }}
-        </span>
-      </button>
-      <button @click="sortBy('orderId')" class="btn">
-        Сортировать по номеру заказа
-        <span v-if="currentSortKey === 'orderId'">
-          {{ sortOrders.orderId === 'asc' ? '▲' : '▼' }}
-        </span>
-      </button>
-      <button @click="sortBy('time')" class="btn">
-        Сортировать по времени брони
-        <span v-if="currentSortKey === 'time'">
-          {{ sortOrders.time === 'asc' ? '▲' : '▼' }}
-        </span>
-      </button>
-      <button @click="sortBy('name')" class="btn">
-        Сортировать по ФИО бронирующего
-        <span v-if="currentSortKey === 'name'">
-          {{ sortOrders.name === 'asc' ? '▲' : '▼' }}
-        </span>
-      </button>
+    <!-- Кнопки сортировки и создания бронирования -->
+    <div class="top-actions">
+      <div class="sort-buttons">
+        <button @click="sortBy('id')" class="btn sort">
+          Сортировать по номеру брони
+          <span v-if="currentSortKey === 'id'">
+            {{ sortOrders.id === 'asc' ? '▲' : '▼' }}
+          </span>
+        </button>
+        <button @click="sortBy('type')" class="btn sort">
+          Сортировать по типу брони
+          <span v-if="currentSortKey === 'type'">
+            {{ sortOrders.type === 'asc' ? '▲' : '▼' }}
+          </span>
+        </button>
+        <button @click="sortBy('time')" class="btn sort">
+          Сортировать по времени брони
+          <span v-if="currentSortKey === 'time'">
+            {{ sortOrders.time === 'asc' ? '▲' : '▼' }}
+          </span>
+        </button>
+        <button @click="sortBy('name')" class="btn sort">
+          Сортировать по ФИО бронирующего
+          <span v-if="currentSortKey === 'name'">
+            {{ sortOrders.name === 'asc' ? '▲' : '▼' }}
+          </span>
+        </button>
+      </div>
+
+      <!-- Кнопка создания бронирования -->
+      <div class="create-booking-button">
+        <button @click="openCreateBookingModal" class="btn create">Создать бронь</button>
+      </div>
     </div>
 
     <!-- Таблица с бронированиями -->
@@ -44,27 +45,21 @@
         <tr>
           <th>Номер брони</th>
           <th>Тип брони</th>
-          <th>Номер заказа</th>
           <th>Время брони</th>
           <th>ФИО бронирующего</th>
           <th>Действия</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="booking in sortedBookings" :key="booking.id">
-          <td>{{ booking.id }}</td>
+        <!-- Используем индекс для отображения последовательных номеров бронирований -->
+        <tr v-for="(booking, index) in paginatedBookings" :key="booking.id">
+          <!-- Используем метод для расчета номера брони -->
+          <td>{{ getBookingNumber(index) }}</td>
           <td>{{ booking.type }}</td>
-          <td>{{ booking.orderId }}</td>
           <td>{{ formatDate(booking.time) }}</td>
           <td>{{ booking.name }}</td>
           <td>
-            <button
-                v-if="isUpcoming(booking.time)"
-                @click="editBooking(booking)"
-                class="btn edit"
-            >
-              Редактировать
-            </button>
+            <!-- Кнопка "Удалить" только для предстоящих бронирований -->
             <button
                 v-if="isUpcoming(booking.time)"
                 @click="deleteBooking(booking.id)"
@@ -76,6 +71,25 @@
         </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Элементы управления пагинацией -->
+    <div class="pagination" v-if="totalPages > 1">
+      <button
+          @click="prevPage"
+          :disabled="currentPage === 1"
+          class="btn pagination-btn"
+      >
+        Назад
+      </button>
+      <span>Страница {{ currentPage }} из {{ totalPages }}</span>
+      <button
+          @click="nextPage"
+          :disabled="currentPage === totalPages"
+          class="btn pagination-btn"
+      >
+        Вперед
+      </button>
     </div>
 
     <!-- Панель навигации с карточками -->
@@ -102,30 +116,36 @@
       </div>
     </div>
 
-    <!-- Модальное окно для редактирования бронирования -->
-    <div v-if="showModal" class="modal-overlay">
+    <!-- Модальное окно для создания бронирования -->
+    <div v-if="showCreateModal" class="modal-overlay">
       <div class="modal">
-        <h3>{{ modalTitle }}</h3>
-        <form @submit.prevent="submitEdit">
+        <h3>Создать бронь</h3>
+        <form @submit.prevent="createBooking">
           <label>
             Тип брони:
-            <input v-model="currentItem.type" required />
-          </label>
-          <label>
-            Номер заказа:
-            <input type="number" v-model="currentItem.orderId" required />
+            <select v-model="newBooking.type" required>
+              <option disabled value="">Выберите тип брони</option>
+              <option>Онлайн</option>
+              <option>Очный</option>
+            </select>
           </label>
           <label>
             Время брони:
-            <input type="datetime-local" v-model="formattedBookingTime" required />
+            <input
+                type="datetime-local"
+                v-model="newBooking.time"
+                :min="minBookingTime"
+                required
+            />
           </label>
           <label>
             ФИО бронирующего:
-            <input v-model="currentItem.name" required />
+            <!-- Установлено ограничение на 80 символов -->
+            <input v-model="newBooking.name" required maxlength="80" />
           </label>
           <div class="modal-actions">
-            <button type="submit" class="btn save">Сохранить</button>
-            <button type="button" @click="closeModal" class="btn cancel">Отмена</button>
+            <button type="submit" class="btn save">Создать</button>
+            <button type="button" @click="closeCreateModal" class="btn cancel">Отмена</button>
           </div>
         </form>
       </div>
@@ -134,25 +154,30 @@
 </template>
 
 <script>
-import axios from 'axios'; // Замените на import из настроенного файла axios.js, если используется
+import axios from 'axios'; // Убедитесь, что axios настроен правильно
 
 export default {
   name: 'Bookings',
   data() {
     return {
-      bookings: [], // Пустой массив для загрузки бронирований
-      showModal: false,
-      modalTitle: '',
-      currentItem: {},
-      formattedBookingTime: '',
+      bookings: [], // Массив для загрузки бронирований
+      showCreateModal: false,
+      newBooking: {
+        type: '',
+        time: '',
+        name: ''
+      },
       sortOrders: {
         id: 'asc',
         type: 'asc',
-        orderId: 'asc',
         time: 'asc',
-        name: 'asc',
+        name: 'asc'
       },
       currentSortKey: '',
+      // Пагинация
+      currentPage: 1,
+      pageSize: 10,
+      totalPages: 1,
     };
   },
   computed: {
@@ -168,16 +193,29 @@ export default {
         if (this.currentSortKey === 'time') {
           aVal = new Date(aVal);
           bVal = new Date(bVal);
-        } else {
-          // Приводим к строкам для сравнения
-          aVal = aVal.toString().toLowerCase();
-          bVal = bVal.toString().toLowerCase();
+        } else if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = bVal.toLowerCase();
         }
 
         if (aVal < bVal) return this.sortOrders[this.currentSortKey] === 'asc' ? -1 : 1;
         if (aVal > bVal) return this.sortOrders[this.currentSortKey] === 'asc' ? 1 : -1;
         return 0;
       });
+    },
+    paginatedBookings() {
+      const start = (this.currentPage - 1) * this.pageSize;
+      const end = start + this.pageSize;
+      return this.sortedBookings.slice(start, end);
+    },
+    minBookingTime() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
     },
   },
   methods: {
@@ -186,6 +224,7 @@ export default {
         const response = await axios.get('http://localhost:8080/api/bookings/admin', { withCredentials: true });
         // Предполагаем, что API возвращает объект с массивом bookings
         this.bookings = response.data.bookings;
+        this.calculateTotalPages();
       } catch (error) {
         console.error('Ошибка при загрузке бронирований:', error);
         alert('Не удалось загрузить бронирования.');
@@ -204,57 +243,29 @@ export default {
     isUpcoming(bookingTime) {
       return new Date(bookingTime) > new Date();
     },
-    editBooking(booking) {
-      this.modalTitle = `Редактирование брони #${booking.id}`;
-      this.currentItem = { ...booking };
-      // Форматируем время для input[type="datetime-local"]
-      this.formattedBookingTime = this.formatDateForInput(booking.time);
-      this.showModal = true;
-    },
-    formatDateForInput(dateString) {
-      const date = new Date(dateString);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
-    },
-    closeModal() {
-      this.showModal = false;
-      this.currentItem = {};
-      this.formattedBookingTime = '';
-    },
-    async submitEdit() {
-      try {
-        const updatedBooking = {
-          type: this.currentItem.type,
-          orderId: this.currentItem.orderId,
-          time: new Date(this.formattedBookingTime).toISOString(),
-          name: this.currentItem.name
-        };
-        await axios.put(`/api/bookings/${this.currentItem.id}`, updatedBooking);
-        // Обновляем локальные данные
-        const index = this.bookings.findIndex(b => b.id === this.currentItem.id);
-        if (index !== -1) {
-          this.bookings[index] = { ...this.currentItem, time: updatedBooking.time };
+    // Метод для расчета номера брони
+    getBookingNumber(index) {
+      if (this.currentSortKey === 'id') {
+        if (this.sortOrders.id === 'desc') {
+          return this.sortedBookings.length - ((this.currentPage - 1) * this.pageSize + index);
         }
-        alert('Бронирование успешно обновлено.');
-        this.closeModal();
-      } catch (error) {
-        console.error('Ошибка при обновлении бронирования:', error);
-        alert('Не удалось обновить бронирование.');
       }
+      return (this.currentPage - 1) * this.pageSize + index + 1;
     },
     async deleteBooking(bookingId) {
       if (!confirm(`Вы уверены, что хотите удалить бронь #${bookingId}?`)) {
         return;
       }
       try {
-        await axios.delete(`/api/bookings/${bookingId}`);
+        await axios.delete(`http://localhost:8080/api/bookings/admin/${bookingId}`, { withCredentials: true });
         // Удаляем бронирование из локального массива
         this.bookings = this.bookings.filter(b => b.id !== bookingId);
         alert('Бронирование успешно удалено.');
+        this.calculateTotalPages();
+        // Если текущая страница пуста после удаления, перейдём на предыдущую
+        if (this.paginatedBookings.length === 0 && this.currentPage > 1) {
+          this.currentPage--;
+        }
       } catch (error) {
         console.error('Ошибка при удалении бронирования:', error);
         alert('Не удалось удалить бронирование.');
@@ -280,8 +291,86 @@ export default {
         // Переключаем направление сортировки
         this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
       } else {
-        // Устанавливаем новый ключ сортировки и направление по умолчанию
+        // Устанавливаем новый ключ сортировки и направление по возрастанию
         this.currentSortKey = key;
+        this.sortOrders[key] = 'asc';
+      }
+      this.currentPage = 1; // Сбросить на первую страницу при изменении сортировки
+    },
+    // Пагинация
+    calculateTotalPages() {
+      this.totalPages = Math.ceil(this.bookings.length / this.pageSize) || 1;
+    },
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+      }
+    },
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+      }
+    },
+    // Создание бронирования
+    openCreateBookingModal() {
+      this.showCreateModal = true;
+      this.newBooking = {
+        type: '',
+        time: '',
+        name: ''
+      };
+    },
+    closeCreateModal() {
+      this.showCreateModal = false;
+      this.newBooking = {
+        type: '',
+        time: '',
+        name: ''
+      };
+    },
+    async createBooking() {
+      // Проверка, что время брони не в прошлом
+      const selectedTime = new Date(this.newBooking.time);
+      const now = new Date();
+      if (selectedTime < now) {
+        alert('Время брони не может быть в прошлом.');
+        return;
+      }
+
+      // Проверка длины ФИО
+      if (this.newBooking.name.length > 80) {
+        alert('ФИО бронирующего не может превышать 80 символов.');
+        return;
+      }
+
+      try {
+        const newBookingData = {
+          booking_type: this.newBooking.type, // Изменено
+          booking_time: new Date(this.newBooking.time).toISOString(), // Изменено
+          booker_full_name: this.newBooking.name // Изменено
+        };
+        const response = await axios.post('http://localhost:8080/api/createOrder/admin', newBookingData, { withCredentials: true });
+
+        // Проверяем, есть ли данные бронирования в ответе
+        if (response.data.booking) {
+          this.bookings.push(response.data.booking);
+        }
+
+        alert('Бронирование успешно создано.');
+        this.closeCreateModal();
+        this.calculateTotalPages();
+      } catch (error) {
+        console.error('Ошибка при создании бронирования:', error);
+        if (error.response && error.response.data && error.response.data.error) {
+          alert(`Не удалось создать бронирование: ${error.response.data.error}`);
+        } else {
+          alert('Не удалось создать бронирование.');
+        }
       }
     },
   },
@@ -294,9 +383,117 @@ export default {
 <style scoped>
 .bookings-dashboard {
   padding: 20px;
-  max-width: 900px;
-  max-height: 100vh;
+  max-width: 1200px;
   margin: 0 auto;
+  max-height: 100vh;
+}
+
+h2 {
+  text-align: center;
+  width: 100%;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.top-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.sort-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.sort-buttons .btn.sort {
+  background-color: #4CAF50; /* Зеленый цвет для кнопок сортировки */
+  color: white;
+}
+
+.sort-buttons .btn.sort:hover {
+  background-color: #45a049;
+}
+
+.create-booking-button .btn.create {
+  background-color: #4CAF50; /* Зеленый цвет для кнопки создания */
+  color: white;
+}
+
+.create-booking-button .btn.create:hover {
+  background-color: #45a049;
+}
+
+.table-section {
+  margin-bottom: 20px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.data-table th {
+  background-color: #f2f2f2;
+}
+
+.btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn.sort {
+  /* Дополнительные стили для кнопок сортировки, если необходимо */
+}
+
+.btn.edit {
+  background-color: #4CAF50; /* Зеленый цвет для кнопки редактирования */
+  margin-right: 5px;
+}
+
+.btn.edit:hover {
+  background-color: #45a049;
+}
+
+.btn.delete {
+  background-color: #F44336; /* Красный цвет для кнопки удаления */
+}
+
+.btn.delete:hover {
+  background-color: #D32F2F;
+}
+
+.btn.pagination-btn {
+  background-color: #4CAF50; /* Зеленый цвет для кнопок пагинации */
+  color: white;
+}
+
+.btn.pagination-btn:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.btn.pagination-btn:disabled {
+  background-color: #a5d6a7;
+  cursor: not-allowed;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 15px;
 }
 
 .card-panel {
@@ -304,11 +501,11 @@ export default {
   gap: 20px;
   flex-wrap: wrap;
   justify-content: center;
-  margin-bottom: 30px;
+  margin-top: 30px;
 }
 
 .card {
-  background-color: #4CAF50;
+  background-color: #4CAF50; /* Зеленый цвет */
   color: #fff;
   border-radius: 10px;
   padding: 15px;
@@ -324,52 +521,69 @@ export default {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
-.table-section {
-  margin-bottom: 20px;
-}
-
-.data-table {
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
-  border-collapse: collapse;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.data-table th, .data-table td {
-  padding: 10px;
-  border: 1px solid #ddd;
-  text-align: left;
+.modal {
+  background-color: white;
+  padding: 25px;
+  border-radius: 8px;
+  width: 400px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.data-table th {
-  background-color: #f2f2f2;
+.modal h3 {
+  margin-bottom: 15px;
+  color: #333;
 }
 
-.btn {
-  background-color: #4CAF50;
-  color: white;
-  padding: 8px 12px;
-  border: none;
+.modal label {
+  display: block;
+  margin-bottom: 10px;
+  color: #555;
+}
+
+.modal select,
+.modal input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
   border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  margin: 5px;
 }
 
-.btn:hover {
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.btn.save {
+  background-color: #4CAF50; /* Зеленый цвет для кнопки сохранения */
+  color: white;
+}
+
+.btn.save:hover {
   background-color: #45a049;
 }
 
-.btn.danger {
-  background-color: #f44336;
+.btn.cancel {
+  background-color: #4CAF50; /* Зеленый цвет для кнопки отмены */
+  color: white;
 }
 
-.btn.danger:hover {
-  background-color: #d32f2f;
-}
-
-h2 {
-  text-align: center;
-  width: 100%;
-  margin-bottom: 20px;
-  color: #333;
+.btn.cancel:hover {
+  background-color: #45a049;
 }
 </style>

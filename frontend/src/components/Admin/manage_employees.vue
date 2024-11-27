@@ -15,9 +15,10 @@
         />
 
         <label for="position">Должность</label>
-        <select class="position"
-                v-model="newEmployee.position"
-                required
+        <select
+            class="position"
+            v-model="newEmployee.position"
+            required
         >
           <option disabled value="">Выберите должность</option>
           <option>Фотограф</option>
@@ -27,7 +28,9 @@
         <label for="hireDate">Дата оформления</label>
         <input
             type="date"
+            id="hireDate"
             v-model="newEmployee.hire_date"
+            :max="todayDate"
             required
         />
 
@@ -71,13 +74,25 @@
         <thead>
         <tr>
           <th>№</th>
-          <th>ФИО</th>
+          <th @click="sortBy('name')" class="sortable">
+            ФИО
+            <span v-if="sortKey === 'name'">
+                <span v-if="sortOrder === 'asc'">&#9650;</span>
+                <span v-else>&#9660;</span>
+              </span>
+          </th>
           <th>Должность</th>
           <th>Дата оформления</th>
           <th>День рождения</th>
           <th>Паспортные данные</th>
           <th>Номер телефона</th>
-          <th>Статус</th> <!-- Новый столбец -->
+          <th @click="sortBy('status')" class="sortable">
+            Статус
+            <span v-if="sortKey === 'status'">
+                <span v-if="sortOrder === 'asc'">&#9650;</span>
+                <span v-else>&#9660;</span>
+              </span>
+          </th>
           <th>Действия</th>
         </tr>
         </thead>
@@ -91,17 +106,29 @@
           <td>{{ employee.passport_data }}</td>
           <td>{{ formatPhoneNumber(employee.phone_number) }}</td>
           <td>
-            <span :class="{'status-working': employee.status === 'Работает', 'status-fired': employee.status === 'Уволен'}">
-              {{ employee.status }}
-            </span>
+              <span :class="{
+                'status-working': employee.status === 'Работает',
+                'status-fired': employee.status === 'Уволен'
+              }">
+                {{ employee.status }}
+              </span>
           </td>
           <td>
-            <button @click="openEditEmployeeModal(employee)" class="btn">Редактировать</button>
+            <!-- Кнопка редактирования только для сотрудников со статусом "Работает" -->
+            <button
+                v-if="employee.status === 'Работает'"
+                @click="openEditEmployeeModal(employee)"
+                class="btn"
+            >
+              Редактировать
+            </button>
+            <!-- Кнопка "Уволить" только для сотрудников со статусом "Работает" -->
             <button
                 v-if="employee.status === 'Работает'"
                 @click="fireEmployee(employee.id)"
-            class="btn danger">
-            Уволить
+                class="btn danger"
+            >
+              Уволить
             </button>
           </td>
         </tr>
@@ -128,14 +155,15 @@
               type="text"
               v-model="currentEmployee.name"
               required
-              maxlength="50"
+              maxlength="80"
           />
 
           <label for="edit-position">Должность</label>
-          <select class="position"
-                  id="edit-position"
-                  v-model="currentEmployee.position"
-                  required
+          <select
+              class="position"
+              id="edit-position"
+              v-model="currentEmployee.position"
+              required
           >
             <option disabled value="">Выберите должность</option>
             <option>Фотограф</option>
@@ -147,6 +175,7 @@
               id="edit-hireDate"
               type="date"
               v-model="currentEmployee.hireDate"
+              :max="todayDate"
               required
           />
 
@@ -219,7 +248,8 @@ export default {
         hire_date: '',
         birth_date: '',
         passport_data: '',
-        phone_number: ''
+        phone_number: '',
+        status: 'Работает' // Добавлено поле 'status' с дефолтным значением
       },
       employees: [],
       loadingEmployees: true,
@@ -235,11 +265,31 @@ export default {
         status: ''
       },
       displayCountEmployees: 10,
+      sortKey: '', // Ключ для сортировки ('name' или 'status')
+      sortOrder: 'asc', // Порядок сортировки ('asc' или 'desc')
     };
   },
   computed: {
+    sortedEmployees() {
+      if (!this.sortKey) {
+        return this.employees;
+      }
+
+      return [...this.employees].sort((a, b) => {
+        let aKey = a[this.sortKey];
+        let bKey = b[this.sortKey];
+
+        // Приведение к одному регистру для строк
+        if (typeof aKey === 'string') aKey = aKey.toLowerCase();
+        if (typeof bKey === 'string') bKey = bKey.toLowerCase();
+
+        if (aKey < bKey) return this.sortOrder === 'asc' ? -1 : 1;
+        if (aKey > bKey) return this.sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+    },
     displayedEmployees() {
-      return this.employees.slice(0, this.displayCountEmployees);
+      return this.sortedEmployees.slice(0, this.displayCountEmployees);
     },
     canLoadMoreEmployees() {
       return this.displayCountEmployees < this.employees.length;
@@ -248,6 +298,13 @@ export default {
       const today = new Date();
       today.setFullYear(today.getFullYear() - 18);
       return today.toISOString().split('T')[0];
+    },
+    todayDate() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     },
     // Вычисляемое свойство для форматирования номера телефона при добавлении
     formattedPhoneNumber: {
@@ -299,7 +356,26 @@ export default {
     }
   },
   methods: {
-    // Получение списка сотрудников с сервера
+    // Метод для сортировки по выбранному ключу
+    sortBy(key) {
+      if (this.sortKey === key) {
+        // Если уже сортируем по этому ключу, переключаем порядок
+        this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+      } else {
+        // Иначе устанавливаем новый ключ сортировки и порядок по возрастанию
+        this.sortKey = key;
+        this.sortOrder = 'asc';
+      }
+    },
+    // Вспомогательная функция для форматирования даты в RFC3339
+    formatDateForInput(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return ''; // Проверка на валидность даты
+      return date.toISOString(); // Возвращает дату в формате RFC 3339
+    },
+
+    // Метод для получения списка сотрудников
     async fetchEmployees() {
       try {
         const response = await fetch('http://localhost:8080/api/employees', {
@@ -316,19 +392,17 @@ export default {
 
         const data = await response.json();
 
-        // Предполагается, что сервер возвращает объект с ключом 'employees', содержащим массив
+        // Измененный маппинг: используем employee_id вместо id и сохраняем даты в "YYYY-MM-DD"
         this.employees = data.employees.map(employee => ({
-          id: employee.id, // Убедитесь, что сервер возвращает 'id'
+          id: employee.employee_id,
           name: employee.full_name,
           position: employee.position,
-          hireDate: employee.hire_date,
-          birthDate: employee.birth_date,
+          hireDate: employee.hire_date, // "YYYY-MM-DD"
+          birthDate: employee.birth_date, // "YYYY-MM-DD"
           passport_data: employee.passport_data,
           phone_number: employee.phone_number,
           status: employee.status
         }));
-
-        console.log("Fetched employees:", this.employees); // Для отладки
 
       } catch (error) {
         console.error('Ошибка при загрузке сотрудников:', error.message);
@@ -337,9 +411,9 @@ export default {
         this.loadingEmployees = false;
       }
     },
-    // Добавление нового сотрудника
+
+    // Метод для добавления нового сотрудника
     async addEmployee() {
-      // Валидация: убедимся, что сотрудник старше 18 лет
       const { full_name, position, hire_date, birth_date, passport_data, phone_number } = this.newEmployee;
 
       // Валидация возраста
@@ -351,15 +425,18 @@ export default {
         return;
       }
 
-      // Форматируем данные для отправки на сервер
+      // Форматируем данные для отправки на сервер в RFC3339
       const formattedEmployee = {
         full_name: full_name,
         position: position,
-        hire_date: new Date(hire_date).toISOString(),
-        birth_date: new Date(birth_date).toISOString(),
-        passport_data: passport_data.replace(/\s/g, ''), // Удаляем пробелы
-        phone_number: phone_number.replace(/-/g, '')    // Удаляем тире
+        hire_date: this.formatDateForInput(hire_date), // Формат RFC3339
+        birth_date: this.formatDateForInput(birth_date), // Формат RFC3339
+        passport_data: passport_data.replace(/\s/g, ''),
+        phone_number: phone_number.replace(/-/g, ''),
+        status: 'Работает' // Добавляем статус по умолчанию
       };
+
+      console.log('Отправляемые данные:', formattedEmployee);
 
       try {
         const response = await fetch('http://localhost:8080/api/employees', {
@@ -371,6 +448,8 @@ export default {
           body: JSON.stringify(formattedEmployee),
         });
 
+        console.log('Ответ сервера (добавление):', response);
+
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || 'Ошибка при добавлении сотрудника');
@@ -378,14 +457,20 @@ export default {
 
         const addedEmployee = await response.json();
 
-        console.log("Added employee:", addedEmployee); // Для отладки
+        // Проверяем, что addedEmployee содержит данные о сотруднике
+        if (!addedEmployee || !addedEmployee.worker) {
+          throw new Error('Некорректный ответ от сервера при добавлении сотрудника.');
+        }
 
+        console.log('Добавленный сотрудник:', addedEmployee.worker);
+
+        // Добавляем нового сотрудника в список
         this.employees.push({
-          id: addedEmployee.worker.id, // Убедитесь, что сервер возвращает 'id' в 'worker'
+          id: addedEmployee.worker.id,
           name: addedEmployee.worker.full_name,
           position: addedEmployee.worker.position,
-          hireDate: addedEmployee.worker.hire_date,
-          birthDate: addedEmployee.worker.birth_date,
+          hireDate: addedEmployee.worker.hire_date, // "YYYY-MM-DD"
+          birthDate: addedEmployee.worker.birth_date, // "YYYY-MM-DD"
           passport_data: addedEmployee.worker.passport_data,
           phone_number: addedEmployee.worker.phone_number,
           status: addedEmployee.worker.status
@@ -401,64 +486,85 @@ export default {
           hire_date: '',
           birth_date: '',
           passport_data: '',
-          phone_number: ''
+          phone_number: '',
+          status: 'Работает' // Сброс с дефолтным значением
         };
       } catch (error) {
         console.error('Ошибка при добавлении сотрудника:', error.message);
         alert(`Не удалось добавить сотрудника: ${error.message}`);
       }
     },
-    // Увольнение сотрудника
-    async fireEmployee(id) {
-      console.log("fireEmployee called with id:", id); // Для отладки
 
+    // Метод для увольнения сотрудника
+    async fireEmployee(id) {
       if (!id) {
         alert('Невозможно уволить сотрудника: ID отсутствует.');
         return;
       }
 
-      if (!confirm('Вы уверены, что хотите уволить этого сотрудника?')) {
+      const employee = this.employees.find(emp => emp.id === id);
+      if (!employee) {
+        alert('Сотрудник не найден.');
+        return;
+      }
+
+      if (!confirm(`Вы уверены, что хотите уволить сотрудника ${employee.name}?`)) {
         return;
       }
 
       try {
         const response = await fetch(`http://localhost:8080/api/employees/${id}/fire`, {
-          method: 'PUT', // Используем PUT запрос
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
           },
           credentials: 'include'
         });
 
+        console.log('Ответ сервера (увольнение):', response);
+
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || 'Ошибка при увольнении сотрудника');
         }
 
-        const responseData = await response.json();
-
-        console.log("Fire response:", responseData); // Для отладки
-
         // Обновление статуса сотрудника в локальном списке
-        this.employees = this.employees.map(employee => {
-          if (employee.id === id) {
-            return { ...employee, status: 'Уволен' };
+        this.employees = this.employees.map(emp => {
+          if (emp.id === id) {
+            return { ...emp, status: 'Уволен' };
           }
-          return employee;
+          return emp;
         });
 
-        alert(`Сотрудник с ID #${id} успешно уволен.`);
+        alert(`Сотрудник ${employee.name} успешно уволен.`);
       } catch (error) {
         console.error('Ошибка при увольнении сотрудника:', error.message);
         alert(`Не удалось уволить сотрудника: ${error.message}`);
       }
     },
-    // Открытие модального окна для редактирования сотрудника
+
+    // Метод для открытия модального окна редактирования сотрудника
     openEditEmployeeModal(employee) {
-      this.currentEmployee = { ...employee };
+      // Копируем данные сотрудника с преобразованием формата даты
+      this.currentEmployee = {
+        ...employee,
+        hireDate: this.formatDateForDateInput(employee.hireDate),
+        birthDate: this.formatDateForDateInput(employee.birthDate)
+      };
+
       this.showEditEmployeeModal = true;
     },
-    // Закрытие модального окна
+    // В методах или computed свойствах
+    formatDateForDateInput(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return ''; // Проверка на валидность даты
+      return date.toISOString().split('T')[0]; // Возвращает "YYYY-MM-DD"
+    },
+
+
+
+    // Метод для закрытия модального окна редактирования сотрудника
     closeEditEmployeeModal() {
       this.showEditEmployeeModal = false;
       this.currentEmployee = {
@@ -472,7 +578,8 @@ export default {
         status: ''
       };
     },
-    // Сохранение изменений сотрудника
+
+    // Метод для сохранения изменений сотрудника
     async saveEmployee() {
       // Валидация: убедимся, что сотрудник старше 18 лет
       const { name, position, hireDate, birthDate, passport_data, phone_number, status } = this.currentEmployee;
@@ -485,6 +592,19 @@ export default {
         return;
       }
 
+      // Форматируем данные для отправки на сервер в RFC3339
+      const formattedEmployee = {
+        full_name: name,
+        position: position,
+        hire_date: this.formatDateForInput(hireDate), // Формат RFC3339
+        birth_date: this.formatDateForInput(birthDate), // Формат RFC3339
+        passport_data: passport_data.replace(/\s/g, ''),
+        phone_number: phone_number.replace(/-/g, ''),
+        status: status
+      };
+
+      console.log('Отправляемые данные (редактирование):', formattedEmployee);
+
       try {
         const response = await fetch(`http://localhost:8080/api/employees/${this.currentEmployee.id}`, {
           method: 'PUT',
@@ -492,16 +612,10 @@ export default {
             'Content-Type': 'application/json'
           },
           credentials: 'include',
-          body: JSON.stringify({
-            full_name: name,
-            position: position,
-            hire_date: new Date(hireDate).toISOString(),
-            birth_date: new Date(birthDate).toISOString(),
-            passport_data: passport_data.replace(/\s/g, ''), // Удаляем пробелы
-            phone_number: phone_number.replace(/-/g, ''),    // Удаляем тире
-            status: status
-          })
+          body: JSON.stringify(formattedEmployee)
         });
+
+        console.log('Ответ сервера (редактирование):', response);
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -510,46 +624,50 @@ export default {
 
         const updatedEmployee = await response.json();
 
-        console.log("Updated employee:", updatedEmployee); // Для отладки
+        console.log('Обновленный сотрудник:', updatedEmployee.worker);
 
-        // Обновление в локальном списке
+        // Обновляем данные сотрудника в локальном списке
         const index = this.employees.findIndex(emp => emp.id === updatedEmployee.worker.id);
         if (index !== -1) {
-          this.$set(this.employees, index, {
+          this.employees[index] = {
             id: updatedEmployee.worker.id,
             name: updatedEmployee.worker.full_name,
             position: updatedEmployee.worker.position,
-            hireDate: updatedEmployee.worker.hire_date,
-            birthDate: updatedEmployee.worker.birth_date,
+            hireDate: updatedEmployee.worker.hire_date, // "YYYY-MM-DD"
+            birthDate: updatedEmployee.worker.birth_date, // "YYYY-MM-DD"
             passport_data: updatedEmployee.worker.passport_data,
             phone_number: updatedEmployee.worker.phone_number,
             status: updatedEmployee.worker.status
-          });
+          };
         }
 
-        alert(`Сотрудник с ID #${updatedEmployee.worker.id} обновлён.`);
+        alert(`Данные сотрудника ${updatedEmployee.worker.full_name} успешно обновлены.`);
         this.closeEditEmployeeModal();
       } catch (error) {
         console.error('Ошибка при обновлении сотрудника:', error.message);
         alert(`Не удалось обновить сотрудника: ${error.message}`);
       }
     },
-    // Форматирование даты с использованием встроенных средств JavaScript
+
+    // Метод для форматирования даты для отображения пользователю
     formatDate(dateString) {
       const options = { year: 'numeric', month: 'long', day: 'numeric' };
       const date = new Date(dateString);
       return date.toLocaleDateString('ru-RU', options);
     },
-    // Форматирование номера телефона для отображения в таблице
+
+    // Метод для форматирования номера телефона для отображения в таблице
     formatPhoneNumber(rawPhone) {
       if (!rawPhone) return '';
       return rawPhone.replace(/(\d)(\d{3})(\d{3})(\d{2})(\d{2})/, '$1-$2-$3-$4-$5');
     },
-    // Загрузка дополнительных сотрудников
+
+    // Метод для загрузки дополнительных сотрудников
     loadMoreEmployees() {
       this.displayCountEmployees += 10;
     },
-    // Навигация по маршрутам (предполагается, что маршруты настроены в роутере)
+
+    // Методы навигации по маршрутам
     goToAdminHome() {
       this.$router.push({ name: 'AdminHome' });
     },

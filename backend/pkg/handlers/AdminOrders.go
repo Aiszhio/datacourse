@@ -5,6 +5,7 @@ import (
 	database "github.com/Aiszhio/datacourse.git/pkg/db"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"sort"
 	"time"
 )
 
@@ -36,6 +37,10 @@ func GetAdminOrders(db *gorm.DB) fiber.Handler {
 				"error": "Error occurred while filling data for admin orders",
 			})
 		}
+		
+		sort.Slice(sendOrders, func(i, j int) bool {
+			return sendOrders[i].OrderID < sendOrders[j].OrderID
+		})
 
 		return c.JSON(fiber.Map{
 			"orders": sendOrders,

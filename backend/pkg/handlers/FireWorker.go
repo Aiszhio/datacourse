@@ -13,7 +13,7 @@ import (
 func FireWorker(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		workerIDStr := c.Params("id")
-		fmt.Printf("Received workerIDStr: %s\n", workerIDStr) // Для отладки
+		fmt.Printf("Received workerIDStr: %s\n", workerIDStr)
 
 		if workerIDStr == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -73,7 +73,7 @@ func FireWorker(db *gorm.DB) fiber.Handler {
 
 		if activeBookings > 0 {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"message": "Cannot fire employee with active bookings.",
+				"message": "У данного сотрудника есть предстоящие заказы.",
 			})
 		}
 
@@ -89,7 +89,7 @@ func FireWorker(db *gorm.DB) fiber.Handler {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"message": "Employee has been fired successfully.",
 			"worker": fiber.Map{
-				"id":            employee.EmployeeID,
+				"employee_id":   employee.EmployeeID,
 				"full_name":     employee.FullName,
 				"position":      employee.Position,
 				"hire_date":     employee.HireDate,

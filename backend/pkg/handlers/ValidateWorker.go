@@ -27,7 +27,7 @@ func SetWorker(db *gorm.DB, orderStart time.Time) (int, error) {
 	var allPhotographers []int
 	err = db.Table("employees").
 		Select("employees.employee_id").
-		Where("employees.position = ?", "Фотограф").
+		Where("employees.position = ?", "Фотограф").Where("employees.status = ?", "Работает").
 		Pluck("employees.employee_id", &allPhotographers).Error
 	if err != nil {
 		return 0, fmt.Errorf("ошибка при получении списка фотографов: %v", err)
