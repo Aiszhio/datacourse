@@ -5,7 +5,6 @@
     <!-- Таблица с услугами -->
     <div class="table-section">
       <h3>Услуги</h3>
-      <button @click="openAddServiceModal" class="btn">Добавить услугу</button>
       <table class="data-table">
         <thead>
         <tr>
@@ -16,13 +15,13 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="service in services" :key="service.service_id">
-          <td>{{ service.service_id }}</td>
+        <!-- Используем sortedServices для сортировки и индексы для нумерации -->
+        <tr v-for="(service, index) in sortedServices" :key="service.service_id">
+          <td>{{ index + 1 }}</td> <!-- Индекс + 1 для начала нумерации с 1 -->
           <td>{{ service.name }}</td>
-          <td>{{ service.price }}</td>
+          <td>{{ service.price }} ₽</td>
           <td>
             <button @click="openEditServiceModal(service)" class="btn">Редактировать</button>
-            <button @click="deleteService(service.service_id)" class="btn danger">Удалить</button>
           </td>
         </tr>
         </tbody>
@@ -32,7 +31,6 @@
     <!-- Таблица с оборудованием -->
     <div class="table-section">
       <h3>Оборудование</h3>
-      <button @click="openAddEquipmentModal" class="btn">Добавить оборудование</button>
       <table class="data-table">
         <thead>
         <tr>
@@ -43,13 +41,13 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="equipment in equipmentList" :key="equipment.equipment_id">
-          <td>{{ equipment.equipment_id }}</td>
-          <td>{{ equipment.brand }}</td>
-          <td>{{ equipment.model }}</td>
+        <!-- Используем sortedEquipment для сортировки -->
+        <tr v-for="(equipment, index) in sortedEquipment" :key="equipment?.equipment_id">
+          <td>{{ index + 1 }}</td>
+          <td>{{ equipment?.brand }}</td>
+          <td>{{ equipment?.model }}</td>
           <td>
             <button @click="openEditEquipmentModal(equipment)" class="btn">Редактировать</button>
-            <button @click="deleteEquipment(equipment.equipment_id)" class="btn danger">Удалить</button>
           </td>
         </tr>
         </tbody>
@@ -64,12 +62,14 @@
           <!-- Модальное окно для услуг -->
           <div v-if="modalType === 'service'">
             <label class="form-label">Название услуги:</label>
-            <input v-model="currentItem.name" required class="form-input" />
+            <input v-model="currentItem.name" required class="form-input" maxlength="50" />
 
             <label class="form-label">Стоимость:</label>
-            <input type="number" v-model="currentItem.price" required class="form-input" min="0" />
+            <div class="price-input">
+              <input type="number" v-model="currentItem.price" required class="form-input" min="0" />
+              <span>₽</span>
+            </div>
           </div>
-
           <!-- Модальное окно для оборудования -->
           <div v-if="modalType === 'equipment'">
             <label class="form-label">Марка:</label>
@@ -80,7 +80,7 @@
           </div>
 
           <button type="submit" class="btn">Сохранить</button>
-          <button @click="closeModal" type="button" class="btn danger">Отмена</button>
+          <button @click.prevent="closeModal" type="button" class="btn danger">Отмена</button>
         </form>
       </div>
     </div>
@@ -129,6 +129,14 @@ export default {
   created() {
     this.fetchServicesAndEquipment();
   },
+  computed: {
+    sortedServices() {
+      return this.services ? [...this.services].sort((a, b) => a.service_id - b.service_id) : [];
+    },
+    sortedEquipment() {
+      return this.equipmentList ? [...this.equipmentList].sort((a, b) => a.equipment_id - b.equipment_id) : [];
+    }
+  },
   methods: {
     // Получение списка услуг и оборудования
     async fetchServicesAndEquipment() {
@@ -137,13 +145,12 @@ export default {
           withCredentials: true
         });
         this.services = response.data.services;
-        this.equipmentList = response.data.equipment; // Исправлено: "equipment" вместо "data"
+        this.equipmentList = response.data.equipment;
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error);
         alert('Не удалось загрузить данные об услугах и оборудовании.');
       }
     },
-
     // Навигация
     goToAdminHome() {
       this.$router.push({ name: 'AdminHome' });
@@ -161,30 +168,15 @@ export default {
       this.$router.push({ name: 'Bookings' });
     },
 
-    // Открытие модального окна для добавления услуги
-    openAddServiceModal() {
-      this.modalType = 'service';
-      this.modalTitle = 'Добавить услугу';
-      this.currentItem = { name: '', price: '' };
-      this.showModal = true;
-    },
-
     // Открытие модального окна для редактирования услуги
     openEditServiceModal(service) {
       this.modalType = 'service';
       this.modalTitle = 'Редактировать услугу';
+      // Проверка service_id
+      console.log("Service ID:", service.service_id);  // Убедитесь, что это значение корректно
       this.currentItem = { ...service };
       this.showModal = true;
     },
-
-    // Открытие модального окна для добавления оборудования
-    openAddEquipmentModal() {
-      this.modalType = 'equipment';
-      this.modalTitle = 'Добавить оборудование';
-      this.currentItem = { brand: '', model: '' };
-      this.showModal = true;
-    },
-
     // Открытие модального окна для редактирования оборудования
     openEditEquipmentModal(equipment) {
       this.modalType = 'equipment';
@@ -207,33 +199,22 @@ export default {
                 },
                 { withCredentials: true }
             );
+            // Обновляем услугу в списке
             const index = this.services.findIndex(s => s.service_id === this.currentItem.service_id);
             if (index !== -1) {
-              this.services.splice(index, 1, response.data.service);
+              this.services[index] = { ...response.data.service };
             }
             alert('Услуга успешно обновлена.');
+
+            // Закрытие модального окна
             this.closeModal();
           } catch (error) {
             console.error('Ошибка при редактировании услуги:', error);
-            alert('Не удалось обновить услугу.');
-          }
-        } else {
-          // Добавление новой услуги
-          try {
-            const response = await axios.post(
-                'http://localhost:8080/api/services',
-                {
-                  name: this.currentItem.name,
-                  price: this.currentItem.price
-                },
-                { withCredentials: true }
-            );
-            this.services.push(response.data.service);
-            alert('Услуга успешно добавлена.');
-            this.closeModal();
-          } catch (error) {
-            console.error('Ошибка при добавлении услуги:', error);
-            alert('Не удалось добавить услугу.');
+            if (error.response && error.response.data && error.response.data.error) {
+              alert(`Ошибка: ${error.response.data.error}`);
+            } else {
+              alert('Не удалось обновить услугу.');
+            }
           }
         }
       } else if (this.modalType === 'equipment') {
@@ -252,66 +233,20 @@ export default {
             if (index !== -1) {
               this.equipmentList.splice(index, 1, response.data.equipment);
             }
+
+            // Перезагружаем данные с сервера, если нужно
+            await this.fetchServicesAndEquipment();  // Перезапросить все данные
+
             alert('Оборудование успешно обновлено.');
-            this.closeModal();
+            this.closeModal(); // Закрытие модального окна
+
           } catch (error) {
             console.error('Ошибка при редактировании оборудования:', error);
             alert('Не удалось обновить оборудование.');
           }
-        } else {
-          // Добавление нового оборудования
-          try {
-            const response = await axios.post(
-                'http://localhost:8080/api/equipment',
-                {
-                  brand: this.currentItem.brand,
-                  model: this.currentItem.model
-                },
-                { withCredentials: true }
-            );
-            this.equipmentList.push(response.data.equipment);
-            alert('Оборудование успешно добавлено.');
-            this.closeModal();
-          } catch (error) {
-            console.error('Ошибка при добавлении оборудования:', error);
-            alert('Не удалось добавить оборудование.');
-          }
         }
       }
     },
-
-    // Удаление услуги
-    async deleteService(service_id) {
-      if (confirm('Вы уверены, что хотите удалить эту услугу?')) {
-        try {
-          await axios.delete(`http://localhost:8080/api/services/${service_id}`, {
-            withCredentials: true
-          });
-          this.services = this.services.filter(service => service.service_id !== service_id);
-          alert('Услуга успешно удалена.');
-        } catch (error) {
-          console.error('Ошибка при удалении услуги:', error);
-          alert('Не удалось удалить услугу.');
-        }
-      }
-    },
-
-    // Удаление оборудования
-    async deleteEquipment(equipment_id) {
-      if (confirm('Вы уверены, что хотите удалить это оборудование?')) {
-        try {
-          await axios.delete(`http://localhost:8080/api/equipment/${equipment_id}`, {
-            withCredentials: true
-          });
-          this.equipmentList = this.equipmentList.filter(equipment => equipment.equipment_id !== equipment_id);
-          alert('Оборудование успешно удалено.');
-        } catch (error) {
-          console.error('Ошибка при удалении оборудования:', error);
-          alert('Не удалось удалить оборудование.');
-        }
-      }
-    },
-
     // Закрытие модального окна
     closeModal() {
       this.showModal = false;
@@ -319,13 +254,6 @@ export default {
       this.modalTitle = '';
       this.currentItem = {};
     },
-
-    // Форматирование даты (если необходимо)
-    formatDate(dateString) {
-      const date = new Date(dateString);
-      if (isNaN(date)) return 'Invalid Date';
-      return date.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
-    }
   }
 };
 </script>

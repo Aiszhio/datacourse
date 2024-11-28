@@ -89,7 +89,7 @@ export default {
     },
     goToBookingPage() {
       this.$router.push({ name: 'Bookings' });
-    }
+    },
   }
 };
 </script>
