@@ -25,12 +25,6 @@
                 {{ sortOrders.clientName === 'asc' ? '▲' : '▼' }}
               </span>
           </th>
-          <th @click="sortBy('employeeName')">
-            Имя сотрудника
-            <span v-if="currentSortKey === 'employeeName'">
-                {{ sortOrders.employeeName === 'asc' ? '▲' : '▼' }}
-              </span>
-          </th>
           <th @click="sortBy('service')">
             Название услуги
             <span v-if="currentSortKey === 'service'">
@@ -55,10 +49,9 @@
         <tr v-for="order in paginatedOrders" :key="order.id">
           <td>{{ order.id }}</td>
           <td>{{ order.clientName }}</td>
-          <td>{{ order.employeeName }}</td>
           <td>{{ order.service }}</td>
-          <td>{{ formatDate(order.orderDate) }}</td>
-          <td>{{ formatDate(order.receiveDate) }}</td>
+          <td>{{ formatDateTime(order.orderDate) }}</td>
+          <td>{{ formatDateTime(order.receiveDate) }}</td>
         </tr>
         </tbody>
       </table>
@@ -108,7 +101,7 @@
       </div>
       <div class="card" @click="goToServicesPage">
         <h4>Услуги</h4>
-        <p>Управление услугами</p>
+        <p>Услуги и оборудование</p>
       </div>
     </div>
 
@@ -121,22 +114,23 @@
             Имя клиента:
             <input v-model="currentItem.clientName" required />
           </label>
-          <label>
-            Имя сотрудника:
-            <input v-model="currentItem.employeeName" required />
-          </label>
+
+          <!-- Ручной ввод для названия услуги -->
           <label>
             Название услуги:
-            <input v-model="currentItem.service" required />
+            <input v-model="currentItem.service" placeholder="Введите название услуги" maxlength="40" required />
           </label>
+
           <label>
             Дата оформления:
-            <input type="date" v-model="currentItem.orderDate" required />
+            <input
+                type="datetime-local"
+                v-model="currentItem.orderDate"
+                :min="getCurrentDateTime()"
+                required
+            />
           </label>
-          <label>
-            Дата получения:
-            <input type="date" v-model="currentItem.receiveDate" required />
-          </label>
+
           <div class="modal-actions">
             <button type="submit" class="btn save">Сохранить</button>
             <button type="button" @click="closeModal" class="btn cancel">Отмена</button>
@@ -148,32 +142,31 @@
 </template>
 
 <script>
-import axios from 'axios'; // Убедитесь, что axios настроен правильно
+import axios from 'axios';
 
 export default {
   name: 'OrderHistory',
   data() {
     return {
       orders: [],
+      uniqueServices: [],  // Список уникальных услуг
       sortOrders: {
         id: 'asc',
         clientName: 'asc',
         employeeName: 'asc',
-        service: 'asc',
+        serviceName: 'asc',
         orderDate: 'asc',
-        receiveDate: 'asc',
+        receiptDate: 'asc',
       },
-      currentSortKey: 'id', // Сортировка по ID по умолчанию
-      isLoading: true, // Состояние загрузки
-      // Пагинация
+      currentSortKey: 'id',
+      isLoading: true,
       currentPage: 1,
-      pageSize: 20, // Количество записей на странице
+      pageSize: 20,
       totalPages: 1,
-      // Модальное окно
       showModal: false,
       modalTitle: '',
       currentItem: {},
-      isEditing: false, // Флаг для режима редактирования
+      isEditing: false,
     };
   },
   computed: {
@@ -182,21 +175,16 @@ export default {
         return this.orders;
       }
       return [...this.orders].sort((a, b) => {
-        let aVal = a[this.currentSortKey];
-        let bVal = b[this.currentSortKey];
+        let aVal = a[this.currentSortKey] !== undefined && a[this.currentSortKey] !== null ? a[this.currentSortKey] : '';
+        let bVal = b[this.currentSortKey] !== undefined && b[this.currentSortKey] !== null ? b[this.currentSortKey] : '';
 
-        // Для сортировки по ID используем числовое сравнение
         if (this.currentSortKey === 'id') {
           aVal = Number(aVal);
           bVal = Number(bVal);
-        }
-        // Для дат преобразуем в объекты Date
-        else if (this.currentSortKey === 'orderDate' || this.currentSortKey === 'receiveDate') {
+        } else if (this.currentSortKey === 'orderDate' || this.currentSortKey === 'receiveDate') {
           aVal = new Date(aVal);
           bVal = new Date(bVal);
-        }
-        else {
-          // Приводим к строкам для сравнения
+        } else {
           aVal = aVal.toString().toLowerCase();
           bVal = bVal.toString().toLowerCase();
         }
@@ -214,48 +202,63 @@ export default {
   },
   methods: {
     async fetchOrders() {
-      this.isLoading = true; // Начинаем загрузку
+      this.isLoading = true;
       try {
         const response = await axios.get('http://localhost:8080/api/orders/admin', {
-          withCredentials: true, // Отправка куки с запросом
+          withCredentials: true,
         });
-        this.orders = response.data.orders || [];
+        console.log('Заказы получены:', response.data); // Логируем ответ с сервера
+        this.orders = response.data.orders || []; // Проверьте правильность структуры данных
+        this.extractUniqueServices();
         this.calculateTotalPages();
       } catch (error) {
         console.error('Ошибка при загрузке заказов:', error);
         alert('Не удалось загрузить заказы.');
       } finally {
-        this.isLoading = false; // Завершаем загрузку
+        this.isLoading = false;
       }
+    },
+    extractUniqueServices() {
+      // Извлекаем уникальные услуги из списка заказов
+      const servicesSet = new Set();
+      this.orders.forEach(order => {
+        servicesSet.add(order.serviceName);
+      });
+      this.uniqueServices = Array.from(servicesSet).map(serviceName => ({
+        name: serviceName
+      }));
     },
     calculateTotalPages() {
       this.totalPages = Math.ceil(this.sortedOrders.length / this.pageSize) || 1;
-      // Если текущая страница превышает общее количество, устанавливаем на последнюю страницу
       if (this.currentPage > this.totalPages) {
         this.currentPage = this.totalPages;
       }
     },
-    formatDate(dateString) {
-      const options = {
+    formatDateTime(dateString) {
+      const date = new Date(dateString);
+      // Преобразуем в МСК, добавляем временную зону
+      const moscowTime = date.toLocaleString('ru-RU', {
+        timeZone: 'Europe/Moscow',
         year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      };
-      return new Date(dateString).toLocaleDateString('ru-RU', options);
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+
+      return moscowTime;
     },
     sortBy(key) {
       if (this.currentSortKey === key) {
-        // Переключаем направление сортировки
         this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
       } else {
-        // Устанавливаем новое поле сортировки
         this.currentSortKey = key;
-        // Устанавливаем направление сортировки по возрастанию
         this.sortOrders[key] = 'asc';
       }
       this.calculateTotalPages();
     },
-    // Пагинация
     nextPage() {
       if (this.currentPage < this.totalPages) {
         this.currentPage += 1;
@@ -266,20 +269,21 @@ export default {
         this.currentPage -= 1;
       }
     },
-    goToPage(page) {
-      if (page >= 1 && page <= this.totalPages) {
-        this.currentPage = page;
-      }
+    getCurrentDateTime() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}:00`;  // Поменять на RFC3339 формат
     },
-    // Модальное окно
     openAddModal() {
       this.modalTitle = 'Добавить заказ';
       this.currentItem = {
         clientName: '',
-        employeeName: '',
         service: '',
-        orderDate: '',
-        receiveDate: '',
+        orderDate: this.getCurrentDateTime(),
       };
       this.isEditing = false;
       this.showModal = true;
@@ -291,27 +295,41 @@ export default {
     },
     async submitAdd() {
       try {
+        // Формируем объект нового заказа
         const newOrder = {
           clientName: this.currentItem.clientName,
-          employeeName: this.currentItem.employeeName,
           service: this.currentItem.service,
-          orderDate: this.currentItem.orderDate, // Формат YYYY-MM-DD
-          receiveDate: this.currentItem.receiveDate, // Формат YYYY-MM-DD
+          orderDate: new Date(this.currentItem.orderDate).toISOString(), // Приводим к ISO формату
         };
+
+        // Логирование данных перед отправкой
+        console.log('Отправляемые данные на сервер:', JSON.stringify(newOrder));
+
         const response = await axios.post('http://localhost:8080/api/orders/admin', newOrder, {
           withCredentials: true,
         });
-        // Предполагаем, что сервер возвращает добавленный заказ
-        this.orders.push(response.data.order);
-        alert('Заказ успешно добавлен.');
-        this.closeModal();
-        this.calculateTotalPages();
+
+        if (response.data.message === 'Заказ успешно сохранен') {
+          this.orders.push(response.data.order);
+          alert('Заказ успешно добавлен.');
+          this.closeModal();
+          this.calculateTotalPages();
+        } else {
+          alert('Неизвестная ошибка: ' + response.data.message || 'Попробуйте позже.');
+        }
+
       } catch (error) {
         console.error('Ошибка при добавлении заказа:', error);
-        alert('Не удалось добавить заказ.');
+
+        if (error.response) {
+          alert('Ошибка сервера: ' + (error.response.data.error || 'Неизвестная ошибка'));
+        } else if (error.request) {
+          alert('Ошибка соединения с сервером. Пожалуйста, проверьте ваше интернет-соединение.');
+        } else {
+          alert('Неизвестная ошибка: ' + error.message);
+        }
       }
     },
-    // Навигация
     goToAdminHome() {
       this.$router.push({ name: 'AdminHome' });
     },
@@ -321,17 +339,11 @@ export default {
     goToMaterialsPage() {
       this.$router.push({ name: 'MaterialsOverview' });
     },
-    goToBookingsPage() {
-      this.$router.push({ name: 'Bookings' });
-    },
     goToServicesPage() {
       this.$router.push({ name: 'Services' });
     },
-  },
-  watch: {
-    // Следим за изменениями в sortedOrders для пересчета общего количества страниц
-    sortedOrders() {
-      this.calculateTotalPages();
+    goToBookingsPage() {
+      this.$router.push({ name: 'Bookings' });
     },
   },
   mounted() {
@@ -438,11 +450,11 @@ h2 {
 }
 
 .btn.cancel {
-  background-color: #4CAF50; /* Зеленый цвет */
+  background-color: red; /* Зеленый цвет */
 }
 
 .btn.cancel:hover {
-  background-color: #45a049;
+  background-color: darkred;
 }
 
 /* Стили для пагинации */

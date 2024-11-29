@@ -37,7 +37,7 @@ func GetAdminOrders(db *gorm.DB) fiber.Handler {
 				"error": "Error occurred while filling data for admin orders",
 			})
 		}
-		
+
 		sort.Slice(sendOrders, func(i, j int) bool {
 			return sendOrders[i].OrderID < sendOrders[j].OrderID
 		})

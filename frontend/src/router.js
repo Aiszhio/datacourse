@@ -6,7 +6,7 @@ import ClientOrders from "@/components/Client/client_orders.vue";
 import Worker from './components/Worker/worker_dashboard.vue';
 import AdminDashboard from './components/Admin/admin_home.vue';
 import ManageEmployees from './components/Admin/manage_employees.vue';
-import Order_history from "./components/Admin/order_history.vue";
+import OrderHistory from "./components/Admin/order_history.vue";
 import MaterialsOverview from './components/Admin/manage_materials.vue';
 import Services from "./components/Admin/services.vue";
 import Bookings from "./components/Admin/booking.vue";
@@ -18,7 +18,7 @@ const routes = [
     { path: '/worker', name: 'WorkerDashboard', component: Worker }, // Панель сотрудника
     { path: '/admin', name: 'AdminHome', component: AdminDashboard },
     { path: '/admin/manage_employee', name: 'ManageEmp', component: ManageEmployees },
-    { path: '/admin/orders', name: 'OrderHistory', component: Order_history },
+    { path: '/admin/orders', name: 'OrderHistory', component: OrderHistory },
     { path: '/admin/MaterialsOverview', name: 'MaterialsOverview', component: MaterialsOverview },
     { path: '/admin/Services', name: 'Services', component: Services },
     { path: '/admin/Bookings', name: 'Bookings', component: Bookings }

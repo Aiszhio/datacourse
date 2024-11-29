@@ -52,7 +52,7 @@ func main() {
 	webApp.Get("/api/employees", handlers.GetEmployees(dbu))
 	webApp.Post("/api/employees", handlers.AddEmployee(dbu))
 	webApp.Get("/api/orders/admin", handlers.GetAdminOrders(dbu))
-	//webApp.Post("/api/orders/admin", handlers.AddOrder(dbu))
+	webApp.Post("/api/orders/admin", handlers.AddOrder(dbu))
 	webApp.Get("/api/materials", handlers.GetMaterials(dbu))
 	webApp.Get("/api/expenditures", handlers.GetMaterialExpenditures(dbu))
 	webApp.Post("/api/expenditures", handlers.AddExpenditure(dbu))

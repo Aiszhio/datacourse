@@ -5,7 +5,7 @@
     <!-- Таблица списка материалов -->
     <div class="materials-section">
       <h3>Список материалов</h3>
-      <p>Для чернил указаны флаконы по 50мл штука</p>
+      <p>Для чернил указаны флаконы по 30мл штука</p>
       <table>
         <thead>
         <tr>
@@ -53,6 +53,45 @@
       </div>
     </div>
 
+    <div v-if="showExpenditureModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Добавить расход материала</h3>
+
+        <!-- Поле для выбора материала -->
+        <label for="expenditureMaterialName">Название материала</label>
+        <select id="expenditureMaterialName" v-model="currentExpenditure.material_id" class="input" required>
+          <option value="" disabled>Выберите материал</option>
+          <option v-for="material in materials" :key="material.material_id" :value="material.material_id">
+            {{ material.material_name }}
+          </option>
+        </select>
+
+        <!-- Поле для ввода количества -->
+        <label for="expenditureQuantity">Количество</label>
+        <div class="quantity-container">
+          <input
+              id="expenditureQuantity"
+              type="number"
+              v-model="currentExpenditure.quantity"
+              class="input"
+              placeholder="Количество"
+              min="1"
+              max="999"
+              required
+              maxlength="4"
+          />
+          <span class="unit">шт</span>
+        </div>
+
+        <!-- Поле для ввода даты расхода -->
+        <label for="expenditureDate">Дата расхода</label>
+        <input id="expenditureDate" type="date" v-model="currentExpenditure.expenditure_date" class="input" :max="todayDate" required />
+
+        <button @click="saveExpenditure" class="btn">Сохранить</button>
+        <button @click="closeExpenditureModal" class="btn danger">Отмена</button>
+      </div>
+    </div>
+
     <!-- Таблица закупок материалов -->
     <div class="purchases-section">
       <h3>Закупка материалов</h3>
@@ -86,45 +125,11 @@
       </div>
     </div>
 
-    <!-- Модальные окна для добавления расхода и закупки -->
-    <div v-if="showExpenditureModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Добавить расход материала</h3>
-        <label for="materialName">Название материала</label>
-        <select id="materialName" v-model="currentExpenditure.material_id" class="input" required>
-          <option value="" disabled>Выберите материал</option>
-          <option v-for="material in materials" :key="material.material_id" :value="material.material_id">
-            {{ material.material_name }}
-          </option>
-        </select>
-
-        <label for="expenditureDate">Дата расхода</label>
-        <input id="expenditureDate" type="date" v-model="currentExpenditure.expenditure_date" class="input" :max="maxDate" required />
-
-        <label for="quantity">Количество расхода</label>
-        <div class="quantity-container">
-          <input
-              id="quantity"
-              type="number"
-              v-model="currentExpenditure.quantity"
-              class="input"
-              placeholder="Количество расхода"
-              min="1"
-              max="500"
-              required
-              maxlength="4"
-          />
-          <span class="unit">шт</span> <!-- Здесь добавляем единицу измерения -->
-        </div>
-
-        <button @click="saveExpenditure" class="btn">Сохранить</button>
-        <button @click="closeExpenditureModal" class="btn danger">Отмена</button>
-      </div>
-    </div>
-
     <div v-if="showPurchaseModal" class="modal-overlay">
       <div class="modal">
         <h3>Добавить закупку материала</h3>
+
+        <!-- Поле для выбора материала -->
         <label for="purchaseMaterialName">Название материала</label>
         <select id="purchaseMaterialName" v-model="currentPurchase.material_id" class="input" required>
           <option value="" disabled>Выберите материал</option>
@@ -133,6 +138,19 @@
           </option>
         </select>
 
+        <!-- Поле для ввода поставщика -->
+        <label for="purchaseSupplier">Поставщик</label>
+        <input
+            id="purchaseSupplier"
+            type="text"
+            v-model="currentPurchase.supplier"
+            class="input"
+            placeholder="Введите поставщика"
+            required
+            maxlength="40"
+        />
+
+        <!-- Поле для ввода количества -->
         <label for="purchaseQuantity">Количество</label>
         <div class="quantity-container">
           <input
@@ -146,12 +164,25 @@
               required
               maxlength="4"
           />
-          <span class="unit">шт</span> <!-- Добавляем единицу измерения -->
+          <span class="unit">шт</span>
         </div>
 
+        <!-- Поле для ввода цены -->
+        <label for="purchaseCost">Цена</label>
+        <input
+            id="purchaseCost"
+            type="number"
+            v-model="currentPurchase.cost"
+            class="input"
+            placeholder="Цена"
+            min="0"
+            required
+        />
+        <span class="unit">руб</span>
 
+        <!-- Поле для ввода даты поставки -->
         <label for="supplyDate">Дата поставки</label>
-        <input id="supplyDate" type="date" v-model="currentPurchase.supply_date" class="input" :min="threeDaysAgo" required />
+        <input id="supplyDate" type="date" v-model="currentPurchase.supply_date" class="input" :min="todayDate" :max="todayDate" required />
 
         <button @click="savePurchase" class="btn">Сохранить</button>
         <button @click="closePurchaseModal" class="btn danger">Отмена</button>
@@ -164,11 +195,11 @@
         <h4>Главная</h4>
         <p>Панель администратора</p>
       </div>
-      <div class="card" @click="goToEmployeesPage">
-        <h4>Сотрудники</h4>
-        <p>Управление персоналом</p>
+      <div class="card" @click="goToBookingsPage">
+        <h4>Бронирование</h4>
+        <p>Управление бронированием</p>
       </div>
-      <div class="card" @click="goToOrdersPage">
+      <div class="card" @click="goToOrderHistory">
         <h4>Заказы</h4>
         <p>История заказов</p>
       </div>
@@ -176,9 +207,9 @@
         <h4>Услуги</h4>
         <p>Услуги и оборудование</p>
       </div>
-      <div class="card" @click="goToBookingPage">
-        <h4>Бронирования</h4>
-        <p>Управление бронированиями</p>
+      <div class="card" @click="goToEmployeesPage">
+        <h4>Сотрудники</h4>
+        <p>Управление персоналом</p>
       </div>
     </div>
 
@@ -205,7 +236,8 @@ export default {
       sortExpenditureDirection: 'asc',
       sortPurchaseDirection: 'asc',
       maxDate: this.getMaxDate(), // Максимальная дата для расхода (не в будущем)
-      threeDaysAgo: this.getThreeDaysAgo() // Дата для закупки (не раньше 3 дней назад)
+      threeDaysAgo: this.getThreeDaysAgo(), // Дата для закупки (не раньше 3 дней назад)
+      todayDate: this.getTodayDate()
     };
   },
   created() {
@@ -243,10 +275,19 @@ export default {
       try {
         const response = await axios.get('http://localhost:8080/api/materials', { withCredentials: true });
         this.materials = response.data.materials;
+        console.log('Материалы успешно загружены:', this.materials);
       } catch (error) {
         console.error('Ошибка при загрузке материалов:', error);
         alert('Не удалось загрузить материалы.');
       }
+    },
+
+    getTodayDate() {
+      const date = new Date();
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${year}-${month}-${day}`;
     },
 
     // Получение списка расходов
@@ -254,6 +295,7 @@ export default {
       try {
         const response = await axios.get('http://localhost:8080/api/expenditures', { withCredentials: true });
         this.expenditures = response.data.expenditures;
+        console.log('Расходы успешно загружены:', this.expenditures);
       } catch (error) {
         console.error('Ошибка при загрузке расходов:', error);
         alert('Не удалось загрузить расходы.');
@@ -265,6 +307,7 @@ export default {
       try {
         const response = await axios.get('http://localhost:8080/api/purchases', { withCredentials: true });
         this.purchases = response.data.purchases;
+        console.log('Закупки успешно загружены:', this.purchases);
       } catch (error) {
         console.error('Ошибка при загрузке закупок:', error);
         alert('Не удалось загрузить закупки.');
@@ -287,15 +330,35 @@ export default {
     },
 
     // Сохранение расхода
+    // Сохранение расхода
     async saveExpenditure() {
       try {
-        await axios.post('http://localhost:8080/api/expenditures', this.currentExpenditure, { withCredentials: true });
+        const response = await axios.post('http://localhost:8080/api/expenditures', this.currentExpenditure, { withCredentials: true });
+
+        // Проверка на успешный ответ с сообщением
+        if (response.data.message) {
+          console.log('Сообщение с сервера:', response.data.message);
+        } else {
+          console.log('Ответ от сервера без сообщения', response.data);
+        }
+
         this.closeExpenditureModal();
         this.fetchExpenditures();
         this.fetchMaterials(); // Обновить количество материалов
       } catch (error) {
-        console.error('Ошибка при сохранении расхода:', error);
-        alert('Не удалось сохранить расход.');
+        // Обработка ошибки
+        if (error.response) {
+          // Сервер вернул ошибку с кодом состояния
+          const errorMessage = error.response.data.error || 'Неизвестная ошибка с сервера';
+          console.error('Ошибка при сохранении расхода:', errorMessage);
+        } else if (error.request) {
+          // Запрос был сделан, но ответа не было
+          console.error('Ошибка при сохранении расхода: нет ответа от сервера');
+          alert('Ошибка: нет ответа от сервера');
+        } else {
+          // Произошла ошибка при настройке запроса
+          console.error('Ошибка при настройке запроса:', error.message);
+        }
       }
     },
 
@@ -319,10 +382,33 @@ export default {
     // Сохранение закупки
     async savePurchase() {
       try {
-        await axios.post('http://localhost:8080/api/purchases', this.currentPurchase, { withCredentials: true });
+        // Проверка на правильность введенной цены (если она есть)
+        if (isNaN(this.currentPurchase.cost) || this.currentPurchase.cost <= 0) {
+          alert('Введите правильную цену для закупки!');
+          return;
+        }
+
+        // Проверка на наличие поставщика
+        if (!this.currentPurchase.supplier || this.currentPurchase.supplier.trim() === '') {
+          alert('Введите имя поставщика!');
+          return;
+        }
+
+        // Отправляем запрос на сервер для сохранения закупки
+        const response = await axios.post('http://localhost:8080/api/purchases', this.currentPurchase, { withCredentials: true });
+
+        // Проверяем успешность операции
+        if (response.data.message) {
+          // Если сервер отправил сообщение об успехе
+        } else if (response.data.error) {
+          // Если сервер отправил ошибку
+        }
+
+        // Закрытие модального окна и обновление данных
         this.closePurchaseModal();
         this.fetchPurchases();
         this.fetchMaterials(); // Обновить количество материалов
+
       } catch (error) {
         console.error('Ошибка при сохранении закупки:', error);
         alert('Не удалось сохранить закупку.');
@@ -369,8 +455,10 @@ export default {
     // Получение даты, не ранее 3 дней назад
     getThreeDaysAgo() {
       const date = new Date();
-      date.setDate(date.getDate() - 3);
-      return date.toISOString().split('T')[0]; // Возвращает строку в формате YYYY-MM-DD
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${year}-${month}-${day}`;
     },
 
     // Получение единицы измерения в зависимости от названия материала
@@ -390,7 +478,22 @@ export default {
         default:
           return '';
       }
-    }
+    },
+    goToAdminHome() {
+      this.$router.push({ name: 'AdminHome' });
+    },
+    goToOrderHistory() {
+      this.$router.push({ name: 'OrderHistory' });
+    },
+    goToEmployeesPage() {
+      this.$router.push({ name: 'ManageEmp' });
+    },
+    goToBookingsPage() {
+      this.$router.push({ name: 'Bookings' });
+    },
+    goToServicesPage() {
+      this.$router.push({ name: 'Services' });
+    },
   }
 };
 </script>

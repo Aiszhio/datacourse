@@ -682,7 +682,7 @@ export default {
     },
     goToServicesPage() {
       this.$router.push({ name: 'Services' });
-    }
+    },
   },
   mounted() {
     this.fetchEmployees();
