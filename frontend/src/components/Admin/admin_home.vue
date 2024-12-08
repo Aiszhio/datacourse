@@ -34,6 +34,11 @@
         <h3>Бронирование</h3>
         <p>Управление бронированием</p>
       </div>
+      <div class="card" @click="goToClients">
+        <i class="fas fa-calendar-check icon"></i>
+        <h3>Учёт клиентов</h3>
+        <p>Список клиентов</p>
+      </div>
     </div>
   </div>
 </template>
@@ -89,6 +94,9 @@ export default {
     },
     goToBookingPage() {
       this.$router.push({ name: 'Bookings' });
+    },
+    goToClients() {
+      this.$router.push({ name: 'Clients' });
     },
   }
 };

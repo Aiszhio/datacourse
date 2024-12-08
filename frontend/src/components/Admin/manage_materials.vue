@@ -9,16 +9,14 @@
       <table>
         <thead>
         <tr>
-          <th>Номер материала</th>
           <th>Название материала</th>
-          <th>Количество</th> <!-- Новый столбец для количества -->
+          <th>Количество</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="(material, index) in materials" :key="material.material_id">
-          <td>{{ index + 1 }}</td>  <!-- Индекс будет начинаться с 1 -->
+        <tr v-for="(material) in sortedMaterials" :key="material.material_id">
           <td>{{ material.material_name }}</td>
-          <td>{{ material.quantity }} <span>{{ getUnit(material.material_name) }}</span></td> <!-- Добавляем единицу измерения -->
+          <td>{{ material.quantity }} <span>{{ getUnit(material.material_name) }}</span></td>
         </tr>
         </tbody>
       </table>
@@ -31,28 +29,30 @@
       <table>
         <thead>
         <tr>
-          <th>Номер расхода</th>
           <th>Название материала</th>
-          <th @click="sortExpenditures('expenditure_date')">Дата расхода</th>
+          <th @click="sortExpenditures">Дата расхода
+            <span v-if="sortExpenditureDirection === 'asc'">▲</span>
+            <span v-else>▼</span>
+          </th>
           <th>Количество расхода</th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="(expenditure, index) in paginatedExpenditures" :key="expenditure.expenditure_id">
-          <td>{{ index + 1 + (expendituresPage - 1) * pageSize }}</td> <!-- Индекс будет начинаться с 1, для текущей страницы -->
+        <tr v-for="(expenditure) in paginatedExpenditures" :key="expenditure.expenditure_id">
           <td>{{ expenditure.material_name }}</td>
           <td>{{ formatDate(expenditure.expenditure_date) }}</td>
-          <td>{{ expenditure.quantity }} <span>{{ getUnit(expenditure.material_name) }}</span></td> <!-- Единица измерения для расхода -->
+          <td>{{ expenditure.quantity }} <span>{{ getUnit(expenditure.material_name) }}</span></td>
         </tr>
         </tbody>
       </table>
-      <div class="pagination">
+      <div class="pagination" v-if="maxPages(expenditures) > 1">
         <button @click="changeExpendituresPage(expendituresPage - 1)" :disabled="expendituresPage <= 1">Назад</button>
         <span>Страница {{ expendituresPage }} из {{ maxPages(expenditures) }}</span>
         <button @click="changeExpendituresPage(expendituresPage + 1)" :disabled="expendituresPage >= maxPages(expenditures)">Вперёд</button>
       </div>
     </div>
 
+    <!-- Модальное окно для добавления расхода -->
     <div v-if="showExpenditureModal" class="modal-overlay">
       <div class="modal">
         <h3>Добавить расход материала</h3>
@@ -78,14 +78,20 @@
               min="1"
               max="999"
               required
-              maxlength="4"
           />
           <span class="unit">шт</span>
         </div>
 
         <!-- Поле для ввода даты расхода -->
         <label for="expenditureDate">Дата расхода</label>
-        <input id="expenditureDate" type="date" v-model="currentExpenditure.expenditure_date" class="input" :max="todayDate" required />
+        <input
+            id="expenditureDate"
+            type="datetime-local"
+            v-model="currentExpenditure.expenditure_date"
+            :max="todayDate"
+            class="input"
+            required
+        />
 
         <button @click="saveExpenditure" class="btn">Сохранить</button>
         <button @click="closeExpenditureModal" class="btn danger">Отмена</button>
@@ -99,32 +105,34 @@
       <table>
         <thead>
         <tr>
-          <th>Номер закупки</th>
           <th>Название материала</th>
           <th>Стоимость</th>
           <th>Поставщик</th>
           <th>Количество</th>
-          <th @click="sortPurchases('supply_date')">Дата поставки</th>
+          <th @click="sortPurchases">Дата поставки
+            <span v-if="sortPurchaseDirection === 'asc'">▲</span>
+            <span v-else>▼</span>
+          </th>
         </tr>
         </thead>
         <tbody>
-        <tr v-for="(purchase, index) in paginatedPurchases" :key="purchase.purchase_id">
-          <td>{{ index + 1 + (purchasesPage - 1) * pageSize }}</td>  <!-- Индекс будет начинаться с 1, для текущей страницы -->
+        <tr v-for="(purchase) in paginatedPurchases" :key="purchase.purchase_id">
           <td>{{ purchase.material_name }}</td>
-          <td>{{ purchase.cost }}</td>
+          <td>{{ purchase.cost }} <span class="unit">руб</span></td>
           <td>{{ purchase.supplier }}</td>
-          <td>{{ purchase.quantity }} <span>{{ getUnit(purchase.material_name) }}</span></td> <!-- Единица измерения для закупки -->
+          <td>{{ purchase.quantity }} <span>{{ getUnit(purchase.material_name) }}</span></td>
           <td>{{ formatDate(purchase.supply_date) }}</td>
         </tr>
         </tbody>
       </table>
-      <div class="pagination">
+      <div class="pagination" v-if="maxPages(purchases) > 1">
         <button @click="changePurchasesPage(purchasesPage - 1)" :disabled="purchasesPage <= 1">Назад</button>
         <span>Страница {{ purchasesPage }} из {{ maxPages(purchases) }}</span>
         <button @click="changePurchasesPage(purchasesPage + 1)" :disabled="purchasesPage >= maxPages(purchases)">Вперёд</button>
       </div>
     </div>
 
+    <!-- Модальное окно для добавления закупки -->
     <div v-if="showPurchaseModal" class="modal-overlay">
       <div class="modal">
         <h3>Добавить закупку материала</h3>
@@ -162,27 +170,36 @@
               min="1"
               max="999"
               required
-              maxlength="4"
           />
           <span class="unit">шт</span>
         </div>
 
         <!-- Поле для ввода цены -->
         <label for="purchaseCost">Цена</label>
-        <input
-            id="purchaseCost"
-            type="number"
-            v-model="currentPurchase.cost"
-            class="input"
-            placeholder="Цена"
-            min="0"
-            required
-        />
-        <span class="unit">руб</span>
+        <div class="quantity-container">
+          <input
+              id="purchaseCost"
+              type="number"
+              v-model="currentPurchase.cost"
+              class="input"
+              placeholder="Цена"
+              min="0"
+              required
+          />
+          <span class="unit">руб</span>
+        </div>
 
         <!-- Поле для ввода даты поставки -->
         <label for="supplyDate">Дата поставки</label>
-        <input id="supplyDate" type="date" v-model="currentPurchase.supply_date" class="input" :min="todayDate" :max="todayDate" required />
+        <input
+            id="supplyDate"
+            type="datetime-local"
+            v-model="currentPurchase.supply_date"
+            :min="threeDaysAgo"
+            :max="todayDate"
+            class="input"
+            required
+        />
 
         <button @click="savePurchase" class="btn">Сохранить</button>
         <button @click="closePurchaseModal" class="btn danger">Отмена</button>
@@ -211,8 +228,12 @@
         <h4>Сотрудники</h4>
         <p>Управление персоналом</p>
       </div>
+      <div class="card" @click="goToClients">
+        <i class="fas fa-box icon"></i>
+        <h3>Клиенты</h3>
+        <p>Учёт и управление</p>
+      </div>
     </div>
-
   </div>
 </template>
 
@@ -230,22 +251,33 @@ export default {
       showPurchaseModal: false,
       currentExpenditure: {},
       currentPurchase: {},
-      expendituresPage: 1, // Пагинация для расхода
-      purchasesPage: 1, // Пагинация для закупки
+      expendituresPage: 1,
+      purchasesPage: 1,
       pageSize: 10,
       sortExpenditureDirection: 'asc',
       sortPurchaseDirection: 'asc',
-      maxDate: this.getMaxDate(), // Максимальная дата для расхода (не в будущем)
-      threeDaysAgo: this.getThreeDaysAgo(), // Дата для закупки (не раньше 3 дней назад)
-      todayDate: this.getTodayDate()
+      todayDate: this.getTodayDate(),
+      threeDaysAgo: this.getThreeDaysAgo(),
     };
   },
-  created() {
-    this.fetchMaterials();
-    this.fetchExpenditures();
-    this.fetchPurchases();
-  },
   computed: {
+    sortedMaterials() {
+      return this.materials.slice().sort((a, b) => a.material_name.localeCompare(b.material_name));
+    },
+    sortedExpenditures() {
+      return this.expenditures.slice().sort((a, b) => {
+        const dateA = new Date(a.expenditure_date);
+        const dateB = new Date(b.expenditure_date);
+        return this.sortExpenditureDirection === 'asc' ? dateA - dateB : dateB - dateA;
+      });
+    },
+    sortedPurchases() {
+      return this.purchases.slice().sort((a, b) => {
+        const dateA = new Date(a.supply_date);
+        const dateB = new Date(b.supply_date);
+        return this.sortPurchaseDirection === 'asc' ? dateA - dateB : dateB - dateA;
+      });
+    },
     paginatedExpenditures() {
       const startIndex = (this.expendituresPage - 1) * this.pageSize;
       return this.sortedExpenditures.slice(startIndex, startIndex + this.pageSize);
@@ -254,23 +286,8 @@ export default {
       const startIndex = (this.purchasesPage - 1) * this.pageSize;
       return this.sortedPurchases.slice(startIndex, startIndex + this.pageSize);
     },
-    sortedExpenditures() {
-      return this.expenditures.sort((a, b) => {
-        const dateA = new Date(a.expenditure_date);
-        const dateB = new Date(b.expenditure_date);
-        return this.sortExpenditureDirection === 'asc' ? dateA - dateB : dateB - dateA;
-      });
-    },
-    sortedPurchases() {
-      return this.purchases.sort((a, b) => {
-        const dateA = new Date(a.supply_date);
-        const dateB = new Date(b.supply_date);
-        return this.sortPurchaseDirection === 'asc' ? dateA - dateB : dateB - dateA;
-      });
-    }
   },
   methods: {
-    // Получение списка материалов
     async fetchMaterials() {
       try {
         const response = await axios.get('http://localhost:8080/api/materials', { withCredentials: true });
@@ -282,15 +299,6 @@ export default {
       }
     },
 
-    getTodayDate() {
-      const date = new Date();
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${year}-${month}-${day}`;
-    },
-
-    // Получение списка расходов
     async fetchExpenditures() {
       try {
         const response = await axios.get('http://localhost:8080/api/expenditures', { withCredentials: true });
@@ -302,7 +310,6 @@ export default {
       }
     },
 
-    // Получение списка закупок
     async fetchPurchases() {
       try {
         const response = await axios.get('http://localhost:8080/api/purchases', { withCredentials: true });
@@ -314,55 +321,19 @@ export default {
       }
     },
 
-    // Открытие модального окна для добавления расхода
     openAddExpenditureModal() {
       this.showExpenditureModal = true;
       this.currentExpenditure = {
         material_id: '',
         expenditure_date: '',
-        quantity: ''
+        quantity: '',
       };
     },
 
-    // Закрытие модального окна расхода
     closeExpenditureModal() {
       this.showExpenditureModal = false;
     },
 
-    // Сохранение расхода
-    // Сохранение расхода
-    async saveExpenditure() {
-      try {
-        const response = await axios.post('http://localhost:8080/api/expenditures', this.currentExpenditure, { withCredentials: true });
-
-        // Проверка на успешный ответ с сообщением
-        if (response.data.message) {
-          console.log('Сообщение с сервера:', response.data.message);
-        } else {
-          console.log('Ответ от сервера без сообщения', response.data);
-        }
-
-        this.closeExpenditureModal();
-        this.fetchExpenditures();
-        this.fetchMaterials(); // Обновить количество материалов
-      } catch (error) {
-        // Обработка ошибки
-        if (error.response) {
-          // Сервер вернул ошибку с кодом состояния
-          const errorMessage = error.response.data.error || 'Неизвестная ошибка с сервера';
-          console.error('Ошибка при сохранении расхода:', errorMessage);
-        } else if (error.request) {
-          // Запрос был сделан, но ответа не было
-          console.error('Ошибка при сохранении расхода: нет ответа от сервера');
-          alert('Ошибка: нет ответа от сервера');
-        } else {
-          // Произошла ошибка при настройке запроса
-          console.error('Ошибка при настройке запроса:', error.message);
-        }
-      }
-    },
-
-    // Открытие модального окна для добавления закупки
     openAddPurchaseModal() {
       this.showPurchaseModal = true;
       this.currentPurchase = {
@@ -370,115 +341,165 @@ export default {
         supplier: '',
         quantity: '',
         cost: '',
-        supply_date: ''
+        supply_date: '',
       };
     },
 
-    // Закрытие модального окна закупки
     closePurchaseModal() {
       this.showPurchaseModal = false;
     },
 
-    // Сохранение закупки
+    async saveExpenditure() {
+      try {
+        const formattedExpenditure = {
+          ...this.currentExpenditure,
+          expenditure_date: new Date(this.currentExpenditure.expenditure_date).toISOString(),
+        };
+
+        const response = await axios.post('http://localhost:8080/api/expenditures', formattedExpenditure, { withCredentials: true });
+
+        if (response.data.message) {
+          console.log('Сообщение с сервера:', response.data.message);
+          alert(`${response.data.message}`);
+        } else {
+          console.log('Ответ от сервера без сообщения:', response.data);
+          alert('Расход успешно добавлен, но нет сообщения от сервера.');
+        }
+
+        this.closeExpenditureModal();
+        this.fetchExpenditures();
+        this.fetchMaterials();
+      } catch (error) {
+        if (error.response) {
+          const errorMessage = error.response.data.error || 'Неизвестная ошибка с сервера';
+          console.error('Ошибка при сохранении расхода:', errorMessage);
+          alert(`Ошибка: ${errorMessage}`);
+        } else if (error.request) {
+          console.error('Ошибка при сохранении расхода: нет ответа от сервера');
+          alert('Ошибка: нет ответа от сервера');
+        } else {
+          console.error('Ошибка при настройке запроса:', error.message);
+          alert(`Ошибка: ${error.message}`);
+        }
+      }
+    },
+
     async savePurchase() {
       try {
-        // Проверка на правильность введенной цены (если она есть)
         if (isNaN(this.currentPurchase.cost) || this.currentPurchase.cost <= 0) {
           alert('Введите правильную цену для закупки!');
           return;
         }
 
-        // Проверка на наличие поставщика
         if (!this.currentPurchase.supplier || this.currentPurchase.supplier.trim() === '') {
           alert('Введите имя поставщика!');
           return;
         }
 
-        // Отправляем запрос на сервер для сохранения закупки
-        const response = await axios.post('http://localhost:8080/api/purchases', this.currentPurchase, { withCredentials: true });
+        const formattedPurchase = {
+          ...this.currentPurchase,
+          supply_date: new Date(this.currentPurchase.supply_date).toISOString(),
+        };
 
-        // Проверяем успешность операции
+        const response = await axios.post('http://localhost:8080/api/purchases', formattedPurchase, { withCredentials: true });
+
         if (response.data.message) {
-          // Если сервер отправил сообщение об успехе
-        } else if (response.data.error) {
-          // Если сервер отправил ошибку
+          console.log('Сообщение с сервера:', response.data.message);
+          alert(`${response.data.message}`);
+        } else {
+          console.log('Ответ от сервера без сообщения:', response.data);
+          alert('Закупка успешно добавлена, но нет сообщения от сервера.');
         }
 
-        // Закрытие модального окна и обновление данных
         this.closePurchaseModal();
         this.fetchPurchases();
-        this.fetchMaterials(); // Обновить количество материалов
-
+        this.fetchMaterials();
       } catch (error) {
-        console.error('Ошибка при сохранении закупки:', error);
-        alert('Не удалось сохранить закупку.');
+        if (error.response) {
+          const errorMessage = error.response.data.error || 'Неизвестная ошибка с сервера';
+          console.error('Ошибка при сохранении закупки:', errorMessage);
+          alert(`Ошибка: ${errorMessage}`);
+        } else if (error.request) {
+          console.error('Ошибка при сохранении закупки: нет ответа от сервера');
+          alert('Ошибка: нет ответа от сервера');
+        } else {
+          console.error('Ошибка при настройке запроса:', error.message);
+          alert(`Ошибка: ${error.message}`);
+        }
       }
     },
 
-    // Форматирование даты
     formatDate(dateString) {
       const date = new Date(dateString);
-      return `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${day}-${month}-${year} ${hours}:${minutes}`;
     },
 
-    // Пагинация для расходов
     changeExpendituresPage(newPage) {
-      this.expendituresPage = newPage;
+      if (newPage >= 1 && newPage <= this.maxPages(this.expenditures)) {
+        this.expendituresPage = newPage;
+      }
     },
 
-    // Пагинация для закупок
     changePurchasesPage(newPage) {
-      this.purchasesPage = newPage;
+      if (newPage >= 1 && newPage <= this.maxPages(this.purchases)) {
+        this.purchasesPage = newPage;
+      }
     },
 
-    // Максимальное количество страниц
     maxPages(data) {
       return Math.ceil(data.length / this.pageSize);
     },
 
-    // Сортировка расходов
-    sortExpenditures(column) {
+    sortExpenditures() {
       this.sortExpenditureDirection = this.sortExpenditureDirection === 'asc' ? 'desc' : 'asc';
     },
 
-    // Сортировка закупок
-    sortPurchases(column) {
+    sortPurchases() {
       this.sortPurchaseDirection = this.sortPurchaseDirection === 'asc' ? 'desc' : 'asc';
     },
 
-    // Получение максимальной даты
-    getMaxDate() {
+    getTodayDate() {
       const date = new Date();
-      return date.toISOString().split('T')[0]; // Возвращает строку в формате YYYY-MM-DD
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
     },
 
-    // Получение даты, не ранее 3 дней назад
     getThreeDaysAgo() {
       const date = new Date();
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
+      date.setDate(date.getDate() - 3);
       const year = date.getFullYear();
-      return `${year}-${month}-${day}`;
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
     },
 
-    // Получение единицы измерения в зависимости от названия материала
     getUnit(materialName) {
-      switch (materialName) {
-        case 'Фото бумага премиум':
-        case 'Холст для печати':
-        case 'Картон для фотокниг':
-        case 'Фото рамки':
-        case 'Обложки для фотокниг':
-        case 'Клеевые полоски для альбомов':
-        case 'Защитные пленки для фотографий':
-        case 'Чернила для принтера':
-        case 'Пленка для фотоальбомов':
-        case 'Фотографическая пленка':
-          return 'шт';
-        default:
-          return '';
-      }
+      const units = {
+        'Фото бумага премиум': 'шт',
+        'Холст для печати': 'шт',
+        'Картон для фотокниг': 'шт',
+        'Фото рамки': 'шт',
+        'Обложки для фотокниг': 'шт',
+        'Клеевые полоски для альбомов': 'шт',
+        'Защитные пленки для фотографий': 'шт',
+        'Чернила для принтера': 'фл',
+        'Пленка для фотоальбомов': 'шт',
+        'Фотографическая пленка': 'шт',
+      };
+      return units[materialName] || '';
     },
+
     goToAdminHome() {
       this.$router.push({ name: 'AdminHome' });
     },
@@ -494,7 +515,15 @@ export default {
     goToServicesPage() {
       this.$router.push({ name: 'Services' });
     },
-  }
+    goToClients(){
+      this.$router.push({ name: 'Clients' })
+    },
+  },
+  created() {
+    this.fetchMaterials();
+    this.fetchExpenditures();
+    this.fetchPurchases();
+  },
 };
 </script>
 
@@ -640,11 +669,11 @@ label {
 }
 
 .quantity-container input {
-  margin-right: 5px; /* Отступ между полем и единицей измерения */
-  width: 80px; /* Устанавливаем ширину поля */
+  margin-right: 5px;
+  width: 80px;
 }
 
 .quantity-container .unit {
-  font-size: 14px; /* Размер шрифта для единицы измерения */
+  font-size: 14px;
 }
 </style>

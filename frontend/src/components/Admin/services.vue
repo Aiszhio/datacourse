@@ -8,7 +8,6 @@
       <table class="data-table">
         <thead>
         <tr>
-          <th>Номер услуги</th>
           <th>Название</th>
           <th>Стоимость</th>
           <th>Действия</th>
@@ -16,8 +15,7 @@
         </thead>
         <tbody>
         <!-- Используем sortedServices для сортировки и индексы для нумерации -->
-        <tr v-for="(service, index) in sortedServices" :key="service.service_id">
-          <td>{{ index + 1 }}</td> <!-- Индекс + 1 для начала нумерации с 1 -->
+        <tr v-for="(service) in sortedServices" :key="service.service_id">
           <td>{{ service.name }}</td>
           <td>{{ service.price }} ₽</td>
           <td>
@@ -34,7 +32,6 @@
       <table class="data-table">
         <thead>
         <tr>
-          <th>Номер оборудования</th>
           <th>Марка</th>
           <th>Модель</th>
           <th>Действия</th>
@@ -42,8 +39,7 @@
         </thead>
         <tbody>
         <!-- Используем sortedEquipment для сортировки -->
-        <tr v-for="(equipment, index) in sortedEquipment" :key="equipment?.equipment_id">
-          <td>{{ index + 1 }}</td>
+        <tr v-for="(equipment) in sortedEquipment" :key="equipment?.equipment_id">
           <td>{{ equipment?.brand }}</td>
           <td>{{ equipment?.model }}</td>
           <td>
@@ -107,6 +103,11 @@
         <h4>Бронирования</h4>
         <p>Управление бронированиями</p>
       </div>
+      <div class="card" @click="goToClients">
+        <i class="fas fa-box icon"></i>
+        <h3>Клиенты</h3>
+        <p>Учёт и управление</p>
+      </div>
     </div>
   </div>
 </template>
@@ -166,6 +167,9 @@ export default {
     },
     goToBookingsPage() {
       this.$router.push({ name: 'Bookings' });
+    },
+    goToClients() {
+      this.$router.push({ name: 'Clients' })
     },
 
     // Открытие модального окна для редактирования услуги

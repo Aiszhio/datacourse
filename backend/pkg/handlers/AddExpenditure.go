@@ -8,10 +8,10 @@ import (
 )
 
 type CustomExpenditure struct {
-	ExpenditureID   int        `gorm:"column:expenditure_id;primaryKey;autoIncrement" json:"expenditure_id"`
-	MaterialID      int        `gorm:"column:material_id;not null" json:"material_id"`
-	ExpenditureDate CustomTime `gorm:"column:expenditure_date;not null" json:"expenditure_date"`
-	Quantity        int        `gorm:"column:quantity;not null" json:"quantity"`
+	ExpenditureID   int       `gorm:"column:expenditure_id;primaryKey;autoIncrement" json:"expenditure_id"`
+	MaterialID      int       `gorm:"column:material_id;not null" json:"material_id"`
+	ExpenditureDate time.Time `gorm:"column:expenditure_date;not null" json:"expenditure_date"`
+	Quantity        int       `gorm:"column:quantity;not null" json:"quantity"`
 }
 
 func AddExpenditure(db *gorm.DB) fiber.Handler {
@@ -32,8 +32,8 @@ func AddExpenditure(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		parsedTime := expenditure.ExpenditureDate.Time.In(loc)
-		expenditure.ExpenditureDate = CustomTime{parsedTime}
+		parsedTime := expenditure.ExpenditureDate.In(loc)
+		expenditure.ExpenditureDate = parsedTime
 
 		tx := db.Begin()
 

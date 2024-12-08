@@ -2,64 +2,73 @@
   <div class="bookings-dashboard">
     <h2>Управление бронированием</h2>
 
-    <!-- Кнопки сортировки и создания бронирования -->
-    <div class="top-actions">
-      <div class="sort-buttons">
-        <button @click="sortBy('id')" class="btn sort">
-          Сортировать по номеру брони
-          <span v-if="currentSortKey === 'id'">
-            {{ sortOrders.id === 'asc' ? '▲' : '▼' }}
-          </span>
-        </button>
-        <button @click="sortBy('type')" class="btn sort">
-          Сортировать по типу брони
-          <span v-if="currentSortKey === 'type'">
-            {{ sortOrders.type === 'asc' ? '▲' : '▼' }}
-          </span>
-        </button>
-        <button @click="sortBy('time')" class="btn sort">
-          Сортировать по времени брони
-          <span v-if="currentSortKey === 'time'">
-            {{ sortOrders.time === 'asc' ? '▲' : '▼' }}
-          </span>
-        </button>
-        <button @click="sortBy('name')" class="btn sort">
-          Сортировать по ФИО бронирующего
-          <span v-if="currentSortKey === 'name'">
-            {{ sortOrders.name === 'asc' ? '▲' : '▼' }}
-          </span>
-        </button>
-      </div>
-
-      <!-- Кнопка создания бронирования -->
-      <div class="create-booking-button">
-        <button @click="openCreateBookingModal" class="btn create">Создать бронь</button>
+    <!-- Раздел фильтрации бронирований -->
+    <div class="filter-section">
+      <h3>Фильтровать бронирования</h3>
+      <div class="filters">
+        <label>
+          Тип брони:
+          <select v-model="filters.type">
+            <option value="">Все типы</option>
+            <option>Онлайн</option>
+            <option>Очный</option>
+          </select>
+        </label>
+        <label>
+          ФИО бронирующего:
+          <input
+              type="text"
+              v-model="filters.name"
+              placeholder="Поиск по ФИО"
+          />
+        </label>
+        <label>
+          Дата брони:
+          <input
+              type="date"
+              v-model="filters.date"
+              :max="todayDate"
+          />
+        </label>
       </div>
     </div>
 
     <!-- Таблица с бронированиями -->
     <div class="table-section">
       <h3>Брони</h3>
+      <button @click="openCreateBookingModal" class="btn">Создать бронь</button>
       <table class="data-table">
         <thead>
         <tr>
-          <th>Номер брони</th>
-          <th>Тип брони</th>
-          <th>Время брони</th>
-          <th>ФИО бронирующего</th>
-          <th>Действия</th>
+          <th @click="sortBy('type')">
+            Тип брони
+            <span v-if="currentSortKey === 'type'">
+                {{ sortOrders.type === 'asc' ? '▲' : '▼' }}
+              </span>
+          </th>
+          <th @click="sortBy('time')">
+            Время брони
+            <span v-if="currentSortKey === 'time'">
+                {{ sortOrders.time === 'asc' ? '▲' : '▼' }}
+              </span>
+          </th>
+          <th @click="sortBy('name')">
+            ФИО бронирующего
+            <span v-if="currentSortKey === 'name'">
+                {{ sortOrders.name === 'asc' ? '▲' : '▼' }}
+              </span>
+          </th>
+          <th>
+            Действия
+          </th>
         </tr>
         </thead>
         <tbody>
-        <!-- Используем индекс для отображения последовательных номеров бронирований -->
-        <tr v-for="(booking, index) in paginatedBookings" :key="booking.id">
-          <!-- Используем метод для расчета номера брони -->
-          <td>{{ getBookingNumber(index) }}</td>
+        <tr v-for="booking in paginatedBookings" :key="booking.id">
           <td>{{ booking.type }}</td>
           <td>{{ formatDate(booking.time) }}</td>
           <td>{{ booking.name }}</td>
           <td>
-            <!-- Кнопка "Удалить" только для предстоящих бронирований -->
             <button
                 v-if="isUpcoming(booking.time)"
                 @click="deleteBooking(booking.id)"
@@ -88,7 +97,7 @@
           :disabled="currentPage === totalPages"
           class="btn pagination-btn"
       >
-        Вперед
+        Вперёд
       </button>
     </div>
 
@@ -113,6 +122,11 @@
       <div class="card" @click="goToServicesPage">
         <h4>Услуги</h4>
         <p>Управление услугами</p>
+      </div>
+      <div class="card" @click="goToClients">
+        <i class="fas fa-box icon"></i>
+        <h3>Клиенты</h3>
+        <p>Учёт и управление</p>
       </div>
     </div>
 
@@ -140,8 +154,13 @@
           </label>
           <label>
             ФИО бронирующего:
-            <!-- Установлено ограничение на 80 символов -->
-            <input v-model="newBooking.name" required maxlength="80" />
+            <input
+                type="text"
+                v-model="newBooking.name"
+                required
+                maxlength="80"
+                placeholder="Введите ФИО"
+            />
           </label>
           <div class="modal-actions">
             <button type="submit" class="btn save">Создать</button>
@@ -168,7 +187,6 @@ export default {
         name: ''
       },
       sortOrders: {
-        id: 'asc',
         type: 'asc',
         time: 'asc',
         name: 'asc'
@@ -178,14 +196,35 @@ export default {
       currentPage: 1,
       pageSize: 10,
       totalPages: 1,
+      // Фильтры
+      filters: {
+        type: '',
+        name: '',
+        date: ''
+      },
+      todayDate: this.getTodayDate()
     };
   },
   computed: {
+    filteredBookings() {
+      return this.bookings.filter(booking => {
+        const matchesType = this.filters.type
+            ? booking.type === this.filters.type
+            : true;
+        const matchesName = this.filters.name
+            ? booking.name.toLowerCase().includes(this.filters.name.toLowerCase())
+            : true;
+        const matchesDate = this.filters.date
+            ? new Date(booking.time).toISOString().split('T')[0] === this.filters.date
+            : true;
+        return matchesType && matchesName && matchesDate;
+      });
+    },
     sortedBookings() {
       if (!this.currentSortKey) {
-        return this.bookings;
+        return this.filteredBookings;
       }
-      return [...this.bookings].sort((a, b) => {
+      return [...this.filteredBookings].sort((a, b) => {
         let aVal = a[this.currentSortKey];
         let bVal = b[this.currentSortKey];
 
@@ -207,16 +246,7 @@ export default {
       const start = (this.currentPage - 1) * this.pageSize;
       const end = start + this.pageSize;
       return this.sortedBookings.slice(start, end);
-    },
-    minBookingTime() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
-    },
+    }
   },
   methods: {
     async fetchBookings() {
@@ -242,15 +272,6 @@ export default {
     },
     isUpcoming(bookingTime) {
       return new Date(bookingTime) > new Date();
-    },
-    // Метод для расчета номера брони
-    getBookingNumber(index) {
-      if (this.currentSortKey === 'id') {
-        if (this.sortOrders.id === 'desc') {
-          return this.sortedBookings.length - ((this.currentPage - 1) * this.pageSize + index);
-        }
-      }
-      return (this.currentPage - 1) * this.pageSize + index + 1;
     },
     async deleteBooking(bookingId) {
       if (!confirm(`Вы уверены, что хотите удалить бронь #${bookingId}?`)) {
@@ -286,6 +307,9 @@ export default {
     goToServicesPage() {
       this.$router.push({ name: 'Services' });
     },
+    goToClients() {
+      this.$router.push({ name: 'Clients' });
+    },
     sortBy(key) {
       if (this.currentSortKey === key) {
         // Переключаем направление сортировки
@@ -299,7 +323,10 @@ export default {
     },
     // Пагинация
     calculateTotalPages() {
-      this.totalPages = Math.ceil(this.bookings.length / this.pageSize) || 1;
+      this.totalPages = Math.ceil(this.sortedBookings.length / this.pageSize) || 1;
+      if (this.currentPage > this.totalPages) {
+        this.currentPage = this.totalPages;
+      }
     },
     nextPage() {
       if (this.currentPage < this.totalPages) {
@@ -309,11 +336,6 @@ export default {
     prevPage() {
       if (this.currentPage > 1) {
         this.currentPage--;
-      }
-    },
-    goToPage(page) {
-      if (page >= 1 && page <= this.totalPages) {
-        this.currentPage = page;
       }
     },
     // Создание бронирования
@@ -359,6 +381,7 @@ export default {
         // Проверяем, есть ли данные бронирования в ответе
         if (response.data.booking) {
           this.bookings.push(response.data.booking);
+          this.bookings = this.sortedBookings; // Обновляем сортировку после добавления
         }
 
         alert('Бронирование успешно создано.');
@@ -373,6 +396,26 @@ export default {
         }
       }
     },
+    getTodayDate() {
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  },
+  watch: {
+    // Обновляем пагинацию при изменении фильтров или бронирований
+    filters: {
+      handler() {
+        this.currentPage = 1;
+        this.calculateTotalPages();
+      },
+      deep: true
+    },
+    bookings() {
+      this.calculateTotalPages();
+    }
   },
   mounted() {
     this.fetchBookings();
@@ -446,15 +489,14 @@ h2 {
 }
 
 .btn {
+  background-color: #4CAF50;
+  color: white;
   padding: 8px 12px;
+  margin-bottom: 10px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.3s;
-}
-
-.btn.sort {
-  /* Дополнительные стили для кнопок сортировки, если необходимо */
 }
 
 .btn.edit {
@@ -585,5 +627,157 @@ h2 {
 
 .btn.cancel:hover {
   background-color: #45a049;
+}
+
+input[type="text"],
+input[type="datetime-local"],
+select {
+  width: 100%;
+  padding: 12px; /* Увеличим padding для большего комфорта */
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px; /* Увеличим размер шрифта */
+  transition: border-color 0.3s ease-in-out;
+}
+
+input[type="text"]:focus,
+input[type="datetime-local"]:focus,
+select:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+input[type="text"]:hover,
+input[type="datetime-local"]:hover,
+select:hover {
+  border-color: #aaa;
+}
+
+/* Стили для меток (label) */
+label {
+  font-size: 16px; /* Увеличим размер шрифта для label */
+  margin-bottom: 5px;
+  display: block;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Стили для блоков фильтрации */
+.filter-wrapper {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.filter-wrapper .filter-input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s ease-in-out;
+}
+
+.filter-wrapper .filter-input:focus {
+  border-color: #4CAF50;
+  outline: none;
+}
+
+.filter-wrapper .filter-input:hover {
+  border-color: #aaa;
+}
+
+.filter-wrapper .filter-select {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s ease-in-out;
+}
+
+.filter-wrapper .filter-select:focus {
+  border-color: #4CAF50;
+  outline: none;
+}
+
+.filter-wrapper .filter-select:hover {
+  border-color: #aaa;
+}
+
+/* Стили для кнопок фильтрации */
+.filter-wrapper .btn.filter {
+  background-color: #4CAF50; /* Зеленый цвет для кнопок фильтрации */
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.filter-wrapper .btn.filter:hover {
+  background-color: #45a049;
+}
+
+.filter-wrapper .btn.filter:focus {
+  outline: none;
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+input[type="text"],
+input[type="datetime-local"],
+select,
+input[type="date"] {
+  width: 100%;
+  padding: 12px; /* Увеличим padding для большего комфорта */
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px; /* Увеличим размер шрифта */
+  transition: border-color 0.3s ease-in-out;
+}
+
+input[type="text"]:focus,
+input[type="datetime-local"]:focus,
+select:focus,
+input[type="date"]:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+input[type="text"]:hover,
+input[type="datetime-local"]:hover,
+select:hover,
+input[type="date"]:hover {
+  border-color: #aaa;
+}
+
+/* Стили для меток (label) */
+label {
+  font-size: 16px; /* Увеличим размер шрифта для label */
+  margin-bottom: 5px;
+  display: block;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Специальные стили для поля "date" */
+input[type="date"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: #fff;
+}
+
+input[type="date"]:focus {
+  border-color: #4CAF50; /* Зеленый цвет для фокуса */
+}
+
+input[type="date"]:hover {
+  border-color: #aaa;
 }
 </style>

@@ -67,6 +67,7 @@ func main() {
 	webApp.Delete("/api/bookings/admin/:bookingId", handlers.DeleteAdminBooking(dbu))
 	webApp.Put("/api/services/:service_id", handlers.UpdateService(dbu))
 	webApp.Put("/api/equipment/:equipment_id", handlers.UpdateEquipment(dbu))
+	webApp.Get("/api/admin/clients", handlers.AddClient(dbu))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))

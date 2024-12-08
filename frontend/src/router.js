@@ -10,6 +10,7 @@ import OrderHistory from "./components/Admin/order_history.vue";
 import MaterialsOverview from './components/Admin/manage_materials.vue';
 import Services from "./components/Admin/services.vue";
 import Bookings from "./components/Admin/booking.vue";
+import Clients from "./components/Admin/manage_clients.vue"
 
 const routes = [
     { path: '/', name: 'home', component: home }, // Главная страница
@@ -21,7 +22,8 @@ const routes = [
     { path: '/admin/orders', name: 'OrderHistory', component: OrderHistory },
     { path: '/admin/MaterialsOverview', name: 'MaterialsOverview', component: MaterialsOverview },
     { path: '/admin/Services', name: 'Services', component: Services },
-    { path: '/admin/Bookings', name: 'Bookings', component: Bookings }
+    { path: '/admin/Bookings', name: 'Bookings', component: Bookings },
+    { path: '/admin/Clients', name: 'Clients', component: Clients}
 ];
 
 const router = createRouter({

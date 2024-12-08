@@ -7,18 +7,32 @@
       <button @click="openAddModal" class="btn add">Добавить заказ</button>
     </div>
 
+    <!-- Раздел фильтрации заказов -->
+    <div class="filter-section">
+      <h3>Фильтровать заказы</h3>
+      <div class="filters">
+        <label>
+          Имя клиента:
+          <input v-model="searchClientName" class = "clientNameInput" placeholder="Поиск по имени клиента" />
+        </label>
+        <label>
+          Название услуги:
+          <select v-model="searchService">
+            <option value="">Все услуги</option>
+            <option v-for="service in uniqueServices" :key="service.name" :value="service.name">
+              {{ service.name }}
+            </option>
+          </select>
+        </label>
+      </div>
+    </div>
+
     <!-- Раздел истории заказов -->
     <div class="order-list-section" v-if="!isLoading">
       <h3>Список заказов</h3>
       <table class="data-table">
         <thead>
         <tr>
-          <th @click="sortBy('id')">
-            Номер заказа
-            <span v-if="currentSortKey === 'id'">
-                {{ sortOrders.id === 'asc' ? '▲' : '▼' }}
-              </span>
-          </th>
           <th @click="sortBy('clientName')">
             Имя клиента
             <span v-if="currentSortKey === 'clientName'">
@@ -47,7 +61,6 @@
         </thead>
         <tbody>
         <tr v-for="order in paginatedOrders" :key="order.id">
-          <td>{{ order.id }}</td>
           <td>{{ order.clientName }}</td>
           <td>{{ order.service }}</td>
           <td>{{ formatDateTime(order.orderDate) }}</td>
@@ -103,6 +116,11 @@
         <h4>Услуги</h4>
         <p>Услуги и оборудование</p>
       </div>
+      <div class="card" @click="goToClients">
+        <i class="fas fa-box icon"></i>
+        <h3>Клиенты</h3>
+        <p>Учёт и управление</p>
+      </div>
     </div>
 
     <!-- Модальное окно для добавления заказа -->
@@ -151,14 +169,12 @@ export default {
       orders: [],
       uniqueServices: [],  // Список уникальных услуг
       sortOrders: {
-        id: 'asc',
         clientName: 'asc',
-        employeeName: 'asc',
-        serviceName: 'asc',
+        service: 'asc',
         orderDate: 'asc',
-        receiptDate: 'asc',
+        receiveDate: 'asc',
       },
-      currentSortKey: 'id',
+      currentSortKey: 'clientName',
       isLoading: true,
       currentPage: 1,
       pageSize: 20,
@@ -167,14 +183,28 @@ export default {
       modalTitle: '',
       currentItem: {},
       isEditing: false,
+      // Фильтры
+      searchClientName: '',
+      searchService: '',
     };
   },
   computed: {
+    filteredOrders() {
+      return this.orders.filter(order => {
+        const matchesClientName = order.clientName
+            .toLowerCase()
+            .includes(this.searchClientName.toLowerCase());
+        const matchesService = this.searchService
+            ? order.service === this.searchService
+            : true;
+        return matchesClientName && matchesService;
+      });
+    },
     sortedOrders() {
       if (!this.currentSortKey) {
-        return this.orders;
+        return this.filteredOrders;
       }
-      return [...this.orders].sort((a, b) => {
+      return [...this.filteredOrders].sort((a, b) => {
         let aVal = a[this.currentSortKey] !== undefined && a[this.currentSortKey] !== null ? a[this.currentSortKey] : '';
         let bVal = b[this.currentSortKey] !== undefined && b[this.currentSortKey] !== null ? b[this.currentSortKey] : '';
 
@@ -222,7 +252,7 @@ export default {
       // Извлекаем уникальные услуги из списка заказов
       const servicesSet = new Set();
       this.orders.forEach(order => {
-        servicesSet.add(order.serviceName);
+        servicesSet.add(order.service);
       });
       this.uniqueServices = Array.from(servicesSet).map(serviceName => ({
         name: serviceName
@@ -255,6 +285,7 @@ export default {
         this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
       } else {
         this.currentSortKey = key;
+        // Устанавливаем начальный порядок сортировки для нового ключа
         this.sortOrders[key] = 'asc';
       }
       this.calculateTotalPages();
@@ -315,7 +346,7 @@ export default {
           this.closeModal();
           this.calculateTotalPages();
         } else {
-          alert('Неизвестная ошибка: ' + response.data.message || 'Попробуйте позже.');
+          alert('Неизвестная ошибка: ' + (response.data.message || 'Попробуйте позже.'));
         }
 
       } catch (error) {
@@ -345,6 +376,23 @@ export default {
     goToBookingsPage() {
       this.$router.push({ name: 'Bookings' });
     },
+    goToClients(){
+      this.$router.push({ name: 'Clients' })
+    },
+  },
+  watch: {
+    // Обновляем пагинацию при изменении фильтров
+    searchClientName() {
+      this.currentPage = 1;
+      this.calculateTotalPages();
+    },
+    searchService() {
+      this.currentPage = 1;
+      this.calculateTotalPages();
+    },
+    orders() {
+      this.calculateTotalPages();
+    }
   },
   mounted() {
     this.fetchOrders();
@@ -557,5 +605,73 @@ h2 {
 .card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.clientNameInput{
+  width: 98%;
+  padding: 12px; /* Увеличим padding для большего комфорта */
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px; /* Увеличим размер шрифта */
+  transition: border-color 0.3s ease-in-out;
+}
+
+input[type="text"],
+input[type="datetime-local"],
+select {
+  width: 100%;
+  padding: 12px; /* Увеличим padding для большего комфорта */
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px; /* Увеличим размер шрифта */
+  transition: border-color 0.3s ease-in-out;
+}
+
+input[type="text"]:focus,
+input[type="datetime-local"]:focus,
+select:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+input[type="text"]:hover,
+input[type="datetime-local"]:hover,
+select:hover {
+  border-color: #aaa;
+}
+
+label {
+  font-size: 16px; /* Увеличим размер шрифта для label */
+  margin-bottom: 5px;
+  display: block;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Стили для модальных окон */
+.modal input[type="text"],
+.modal input[type="datetime-local"],
+.modal select {
+  margin: 10px 0;
+  padding: 12px;
+  font-size: 16px; /* Увеличиваем размер шрифта */
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ddd;
+}
+
+select[name="service"] {
+  max-width: 200px; /* Ограничим максимальную ширину поля */
+  margin: 10px 0;
+}
+
+.modal input[type="text"]:focus,
+.modal input[type="datetime-local"]:focus,
+.modal select:focus {
+  border-color: #0056b3;
+  outline: none;
 }
 </style>

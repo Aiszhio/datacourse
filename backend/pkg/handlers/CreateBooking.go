@@ -41,6 +41,17 @@ func CreateBooking(db *gorm.DB, client *redis.Client) fiber.Handler {
 			})
 		}
 
+		bookingTime := booking.BookingTime
+		moscowLocation, err := time.LoadLocation("Europe/Moscow")
+		if err != nil {
+			fmt.Println("Error loading Moscow timezone:", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to load Moscow timezone",
+			})
+		}
+
+		bookingTime = bookingTime.In(moscowLocation)
+
 		err = db.Table("bookings").Create(&booking).Error
 		if err != nil {
 			fmt.Println(err)
@@ -50,7 +61,6 @@ func CreateBooking(db *gorm.DB, client *redis.Client) fiber.Handler {
 		}
 
 		var workerName string
-
 		err = db.Table("employees").Where("employee_id = ?", workerID).
 			Select("full_name").Scan(&workerName).Error
 		if err != nil {
@@ -61,7 +71,7 @@ func CreateBooking(db *gorm.DB, client *redis.Client) fiber.Handler {
 		}
 
 		bookingToOrder.EmployeeID = workerID
-		bookingToOrder.OrderDate = booking.BookingTime
+		bookingToOrder.OrderDate = bookingTime
 
 		err = PrepareOrder(db, client, bookingToOrder)
 		if err != nil {

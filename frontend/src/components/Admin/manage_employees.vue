@@ -73,7 +73,6 @@
       <table v-else class="employees-table">
         <thead>
         <tr>
-          <th>№</th>
           <th @click="sortBy('name')" class="sortable">
             ФИО
             <span v-if="sortKey === 'name'">
@@ -97,8 +96,7 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="(employee, index) in displayedEmployees" :key="employee.id">
-          <td>{{ index + 1 }}</td>
+        <tr v-for="(employee) in displayedEmployees" :key="employee.id">
           <td>{{ employee.name }}</td>
           <td>{{ employee.position }}</td>
           <td>{{ formatDate(employee.hireDate) }}</td>
@@ -232,6 +230,11 @@
       <div class="card" @click="goToServicesPage">
         <h4>Услуги</h4>
         <p>Управление услугами</p>
+      </div>
+      <div class="card" @click="goToClients">
+        <i class="fas fa-box icon"></i>
+        <h3>Клиенты</h3>
+        <p>Учёт и управление</p>
       </div>
     </div>
   </div>
@@ -682,6 +685,9 @@ export default {
     },
     goToServicesPage() {
       this.$router.push({ name: 'Services' });
+    },
+    goToClients(){
+      this.$router.push({ name: 'Clients' })
     },
   },
   mounted() {

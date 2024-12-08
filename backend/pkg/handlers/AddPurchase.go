@@ -9,12 +9,12 @@ import (
 )
 
 type CustomPurchase struct {
-	PurchaseID int           `gorm:"column:purchase_id;primaryKey;autoIncrement" json:"purchase_id"`
-	MaterialID int           `gorm:"column:material_id;not null" json:"material_id"`
-	Cost       CustomFloat64 `gorm:"column:cost;not null" json:"cost"`
-	Supplier   string        `gorm:"column:supplier;not null" json:"supplier"`
-	Quantity   int           `gorm:"column:quantity;not null" json:"quantity"`
-	SupplyDate CustomTime    `gorm:"column:supply_date;not null" json:"supply_date"`
+	PurchaseID int       `gorm:"column:purchase_id;primaryKey;autoIncrement" json:"purchase_id"`
+	MaterialID int       `gorm:"column:material_id;not null" json:"material_id"`
+	Cost       float64   `gorm:"column:cost;not null" json:"cost"`
+	Supplier   string    `gorm:"column:supplier;not null" json:"supplier"`
+	Quantity   int       `gorm:"column:quantity;not null" json:"quantity"`
+	SupplyDate time.Time `gorm:"column:supply_date;not null" json:"supply_date"`
 }
 
 func AddPurchase(db *gorm.DB) fiber.Handler {
@@ -36,9 +36,9 @@ func AddPurchase(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		parsedTime := purchaseItem.SupplyDate.Time.In(loc)
+		parsedTime := purchaseItem.SupplyDate.In(loc)
 
-		purchaseItem.SupplyDate = CustomTime{parsedTime}
+		purchaseItem.SupplyDate = parsedTime
 
 		tx := db.Begin()
 		if tx.Error != nil {

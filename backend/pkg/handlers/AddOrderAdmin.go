@@ -10,9 +10,9 @@ import (
 )
 
 type ClientOrder struct {
-	ClientName  string      `json:"clientName"`
-	ServiceName string      `json:"service"`
-	OrderDate   customTime1 `json:"orderDate"`
+	ClientName  string    `json:"clientName"`
+	ServiceName string    `json:"service"`
+	OrderDate   time.Time `json:"orderDate"`
 }
 
 func AddOrder(db *gorm.DB) fiber.Handler {
@@ -65,12 +65,6 @@ func AddOrder(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		orderDate := order.OrderDate.ToTime()
-
-		orderDateStr := orderDate.Format(time.RFC3339)
-
-		fmt.Println("Parsed Order Date:", orderDateStr)
-
 		moscowLocation, err := time.LoadLocation("Europe/Moscow")
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -78,16 +72,11 @@ func AddOrder(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		orderDate, err = time.ParseInLocation(time.RFC3339, orderDateStr, time.UTC)
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Невозможно разобрать дату в формате RFC3339",
-			})
-		}
+		orderDate := order.OrderDate.In(moscowLocation)
 
-		orderDate = orderDate.In(moscowLocation)
+		orderDateStr := orderDate.Format(time.RFC3339)
 
-		fmt.Println("Order Date in Moscow Time:", orderDate)
+		fmt.Println("Parsed Order Date:", orderDateStr)
 
 		if orderDate.Hour() < 9 || orderDate.Hour() >= 19 {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -98,19 +87,21 @@ func AddOrder(db *gorm.DB) fiber.Handler {
 		if err = tx.Table("booking_to_orders as bto").
 			Select("bto.client_id, bto.order_date, c.full_name as client_name").
 			Joins("inner join clients as c on bto.client_id = c.client_id").
-			Where("bto.client_id = ? and bto.order_date = ?", client.ClientID, order.OrderDate).
+			Where("bto.client_id = ? and bto.order_date < ?", client.ClientID, order.OrderDate).
 			First(&orderFromBooking).Error; err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "Такой брони не существует",
 			})
 		}
 
+		receiptDate := orderFromBooking.OrderDate.In(moscowLocation).Add(time.Hour)
+
 		orderToSave := db2.Order{
 			ClientID:    orderFromBooking.ClientID,
 			EmployeeID:  orderFromBooking.EmployeeID,
 			ServiceName: order.ServiceName,
 			OrderDate:   orderDate,
-			ReceiptDate: orderFromBooking.OrderDate,
+			ReceiptDate: receiptDate,
 		}
 
 		if err = tx.Table("orders").Create(&orderToSave).Error; err != nil {
@@ -119,7 +110,7 @@ func AddOrder(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		orderToService.OrderID = orderToSave.OrderID
+		orderToService.ServiceID = service.ServiceID
 
 		if err = tx.Commit().Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -131,26 +122,4 @@ func AddOrder(db *gorm.DB) fiber.Handler {
 			"message": "Заказ успешно сохранен",
 		})
 	}
-}
-
-type customTime1 time.Time
-
-func (ct *customTime1) UnmarshalJSON(data []byte) error {
-	parsedTime, err := time.Parse(`"2006-01-02T15:04:05.000Z"`, string(data))
-	if err != nil {
-		parsedTime, err = time.Parse(`"2006-01-02T15:04:05"`, string(data))
-		if err != nil {
-			return fmt.Errorf("не удалось разобрать время в формате '2006-01-02T15:04:05' или '2006-01-02T15:04:05.000Z': %v", err)
-		}
-	}
-	*ct = customTime1(parsedTime)
-	return nil
-}
-
-func (ct customTime1) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("\"%s\"", time.Time(ct).Format("2006-01-02T15:04:05"))), nil
-}
-
-func (ct customTime1) ToTime() time.Time {
-	return time.Time(ct)
 }
