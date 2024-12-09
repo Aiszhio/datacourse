@@ -9,7 +9,7 @@ import (
 
 func SessionMiddleware(client *redis.Client) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		if c.Path() == "/" || c.Path() == "/api/login" {
+		if c.Path() == "/" || c.Path() == "/api/login" || c.Path() == "/api/register" {
 			return c.Next()
 		}
 

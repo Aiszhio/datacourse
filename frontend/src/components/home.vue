@@ -1,15 +1,115 @@
+<template>
+  <div class="auth-container">
+    <h2>{{ isRegistering ? 'Регистрация' : 'Вход в аккаунт' }}</h2>
+
+    <form @submit.prevent="isRegistering ? register() : login()">
+      <!-- Форма регистрации -->
+      <div v-if="isRegistering">
+        <input
+            type="text"
+            v-model="fullName"
+            placeholder="Полное имя"
+            required
+            :class="{'invalid': !isValidFullName(fullName)}"
+        />
+        <input
+            type="tel"
+            v-model="phone"
+            placeholder="Номер телефона"
+            required
+            v-mask="'7(###) ###-####'"
+            :class="{'invalid': !isValidPhone(phone)}"
+        />
+        <input
+            type="email"
+            v-model="filters.email"
+            placeholder="Электронная почта"
+            required
+            :class="{'invalid': !isValidEmail(filters.email)}"
+        />
+      </div>
+
+      <!-- Форма входа -->
+      <div v-else>
+        <input
+            type="tel"
+            v-model="phone"
+            placeholder="Номер телефона"
+            required
+            v-mask="'7(###) ###-####'"
+            :class="{'invalid': !isValidPhone(phone)}"
+        />
+        <input
+            type="password"
+            v-model="password"
+            placeholder="Пароль"
+            required
+        />
+      </div>
+
+      <button type="submit" class="btn">
+        {{ isRegistering ? 'Зарегистрироваться' : 'Войти' }}
+      </button>
+
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+    </form>
+
+    <div class="toggle-section">
+      <span>{{ isRegistering ? 'Уже есть аккаунт?' : 'Нет аккаунта?' }}</span>
+      <button @click="toggleForm" class="btn-toggle">
+        {{ isRegistering ? 'Войти' : 'Зарегистрироваться' }}
+      </button>
+    </div>
+  </div>
+</template>
+
 <script>
+import { ref } from 'vue';
+
 export default {
-  name: 'home',
+  name: 'Home',
   data() {
     return {
-      phone: '', // Используем телефон вместо email
+      isRegistering: false,  // Флаг для переключения между входом и регистрацией
+      phone: '',
       password: '',
-      errorMessage: ''
+      fullName: '',
+      errorMessage: '',
+      filters: {
+        email: ''
+      },
     };
   },
   methods: {
+    // Валидация электронной почты
+    isValidEmail(email) {
+      const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+      return regex.test(email);
+    },
+
+    // Валидация номера телефона
+    isValidPhone(phone) {
+      const regex = /^7\d{10}$/;
+      return regex.test(this.cleanPhone(phone));
+    },
+
+    // Валидация ФИО
+    isValidFullName(name) {
+      const regex = /^[A-Za-zА-Яа-яЁё]+ [A-Za-zА-Яа-яЁё]+ [A-Za-zА-Яа-яЁё]+$/;
+      return regex.test(name);
+    },
+
+    // Метод для очистки маски телефона
+    cleanPhone(phone) {
+      return phone.replace(/\D/g, '');
+    },
+
     async login() {
+      if (!this.isValidPhone(this.phone)) {
+        this.errorMessage = 'Пожалуйста, введите корректный номер телефона.';
+        return;
+      }
+
       try {
         const response = await fetch('http://localhost:8080/api/login', {
           method: 'POST',
@@ -17,25 +117,22 @@ export default {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            phone: this.phone, // Используем телефон
+            phone: this.cleanPhone(this.phone),
             password: this.password
           }),
-          credentials: 'include' // Включаем отправку куки
+          credentials: 'include'
         });
 
         if (!response.ok) {
-          throw new Error('Ошибка аутентификации');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Ошибка аутентификации');
         }
 
         const data = await response.json();
-
-        // Получаем роль из данных ответа
         const role = data.role;
 
-        // Показываем сообщение об успешном входе
         alert('Авторизация прошла успешно!');
 
-        // Выполняем маршрутизацию на основе роли
         if (role === 'admin') {
           this.$router.push({ name: 'AdminHome' });
         } else if (role === 'worker') {
@@ -45,27 +142,62 @@ export default {
         } else {
           throw new Error('Неизвестная роль');
         }
-
       } catch (error) {
-        this.errorMessage = 'Ошибка входа. Проверьте данные и попробуйте снова.';
+        this.errorMessage = error.message || 'Ошибка входа. Проверьте данные и попробуйте снова.';
         console.error(error);
       }
+    },
+
+    async register() {
+      if (!this.fullName || !this.isValidEmail(this.filters.email) || !this.isValidPhone(this.phone)) {
+        this.errorMessage = 'Пожалуйста, проверьте данные.';
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:8080/api/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            FullName: this.fullName,
+            PhoneNumber: this.cleanPhone(this.phone),
+            Email: this.filters.email,
+          }),
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Ошибка регистрации');
+        }
+
+        const data = await response.json();
+        alert('Регистрация прошла успешно! Теперь вы можете войти в систему.');
+        this.resetForm();
+        this.isRegistering = false;  // Переключаемся на форму входа
+      } catch (error) {
+        this.errorMessage = error.message || 'Ошибка регистрации. Попробуйте снова.';
+        console.error(error);
+      }
+    },
+
+    toggleForm() {
+      this.isRegistering = !this.isRegistering;
+      this.resetForm();
+    },
+
+    resetForm() {
+      this.phone = '';
+      this.password = '';
+      this.fullName = '';
+      this.filters.email = '';
+      this.errorMessage = '';
     }
   }
 };
 </script>
-
-<template>
-  <div class="login-container">
-    <h2>Вход в аккаунт</h2>
-    <form @submit.prevent="login">
-      <input type="tel" v-model="phone" placeholder="Номер телефона" required />
-      <input type="password" v-model="password" placeholder="Пароль" required />
-      <button type="submit" class="btn">Войти</button>
-      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-    </form>
-  </div>
-</template>
 
 <style scoped>
 body {
@@ -80,7 +212,7 @@ body {
   font-family: 'Arial', sans-serif;
 }
 
-.login-container {
+.auth-container {
   background: rgba(255, 255, 255, 0.85);
   padding: 40px 30px;
   border-radius: 15px;
@@ -99,7 +231,7 @@ h2 {
 input {
   width: 90%;
   padding: 15px;
-  margin: 15px 0;
+  margin: 10px 0;
   border: 2px solid #ccc;
   border-radius: 8px;
   font-size: 1em;
@@ -120,13 +252,42 @@ input:focus {
   font-size: 1.1em;
   width: 100%;
   transition: background-color 0.3s;
+  margin-top: 15px;
 }
 
 .btn:hover {
   background-color: #ff4d4d;
 }
 
-.logo img {
-  max-width: 150px;
+.btn-toggle {
+  background-color: transparent;
+  color: #ff6b6b;
+  border: none;
+  cursor: pointer;
+  font-size: 1em;
+
+  text-decoration: underline;
+}
+
+.btn-toggle:hover {
+  color: #ff4d4d;
+}
+
+.error {
+  color: red;
+  font-size: 0.9em;
+  margin-top: 10px;
+}
+
+.toggle-section {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.toggle-section span {
+  margin-right: 10px;
+  color: #555;
 }
 </style>

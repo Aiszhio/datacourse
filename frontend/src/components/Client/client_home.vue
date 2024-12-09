@@ -22,8 +22,10 @@
           <tbody>
           <tr v-for="(booking, index) in bookings" :key="booking.id">
             <td>{{ index + 1 }}</td>
-            <td>{{ booking.type || 'Не указано' }}</td>
-            <td>{{ formatDateTime(booking.time) }}</td>
+            <!-- Исправлено: используем правильное имя поля для типа бронирования -->
+            <td>{{ booking.booking_type || 'Не указано' }}</td>
+            <!-- Исправлено: используем правильное имя поля для времени бронирования -->
+            <td>{{ formatDateTime(booking.booking_time) }}</td>
             <td>
               <button @click="deleteBooking(booking.id)" class="delete-button">
                 Удалить
@@ -53,9 +55,9 @@ export default {
   name: 'User',
   data() {
     return {
-      userName: '',           // Имя пользователя
-      bookings: [],           // Список всех бронирований
-      loadingBookings: true,  // Индикатор загрузки бронирований
+      userName: '',
+      bookings: [],
+      loadingBookings: true,
     };
   },
   mounted() {
@@ -110,6 +112,7 @@ export default {
         }
 
         const data = await response.json();
+        // Предполагаем, что сервер возвращает объект с полем 'data', которое содержит массив бронирований
         this.bookings = data.data || [];
       } catch (error) {
         console.error('Ошибка при загрузке бронирований:', error.message);

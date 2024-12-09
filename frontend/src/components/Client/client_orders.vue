@@ -155,7 +155,7 @@ export default {
         }
 
         // Отображение имени сотрудника в alert
-        alert(`Вы успешно сделали бронь, Ваш фотограф: ${result.worker}`);
+        alert(`Вы успешно сделали бронь!`);
 
         this.resetBookingForm();
       } catch (error) {
@@ -289,6 +289,7 @@ form select,
   display: flex;
   gap: 20px;
   justify-content: center;
+  margin: 20px;
 }
 
 .card {

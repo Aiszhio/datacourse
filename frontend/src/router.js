@@ -31,7 +31,6 @@ const router = createRouter({
     routes,
 });
 
-// Добавляем глобальный перехватчик маршрутов
 router.beforeEach(async (to, from, next) => {
     if (to.path === '/') {
         return next(); // Пропускаем проверку роли для главной страницы

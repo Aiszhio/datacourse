@@ -27,7 +27,6 @@
           <input
               type="date"
               v-model="filters.date"
-              :max="todayDate"
           />
         </label>
       </div>
@@ -40,22 +39,22 @@
       <table class="data-table">
         <thead>
         <tr>
-          <th @click="sortBy('type')">
+          <th @click="sortBy('booking_type')">
             Тип брони
-            <span v-if="currentSortKey === 'type'">
-                {{ sortOrders.type === 'asc' ? '▲' : '▼' }}
+            <span v-if="currentSortKey === 'booking_type'">
+                {{ sortOrders.booking_type === 'asc' ? '▲' : '▼' }}
               </span>
           </th>
-          <th @click="sortBy('time')">
+          <th @click="sortBy('booking_time')">
             Время брони
-            <span v-if="currentSortKey === 'time'">
-                {{ sortOrders.time === 'asc' ? '▲' : '▼' }}
+            <span v-if="currentSortKey === 'booking_time'">
+                {{ sortOrders.booking_time === 'asc' ? '▲' : '▼' }}
               </span>
           </th>
-          <th @click="sortBy('name')">
+          <th @click="sortBy('booker_full_name')">
             ФИО бронирующего
-            <span v-if="currentSortKey === 'name'">
-                {{ sortOrders.name === 'asc' ? '▲' : '▼' }}
+            <span v-if="currentSortKey === 'booker_full_name'">
+                {{ sortOrders.booker_full_name === 'asc' ? '▲' : '▼' }}
               </span>
           </th>
           <th>
@@ -65,12 +64,12 @@
         </thead>
         <tbody>
         <tr v-for="booking in paginatedBookings" :key="booking.id">
-          <td>{{ booking.type }}</td>
-          <td>{{ formatDate(booking.time) }}</td>
-          <td>{{ booking.name }}</td>
+          <td>{{ booking.booking_type }}</td>
+          <td>{{ formatDate(booking.booking_time) }}</td>
+          <td>{{ booking.booker_full_name }}</td>
           <td>
             <button
-                v-if="isUpcoming(booking.time)"
+                v-if="isUpcoming(booking.booking_time)"
                 @click="deleteBooking(booking.id)"
                 class="btn delete"
             >
@@ -162,6 +161,17 @@
                 placeholder="Введите ФИО"
             />
           </label>
+          <label>
+            Номер телефона бронирующего:
+            <input
+                type="text"
+                v-model="newBooking.phone"
+                class="filter-input"
+                maxlength="11"
+                @input="formatPhone"
+                required
+            />
+          </label>
           <div class="modal-actions">
             <button type="submit" class="btn save">Создать</button>
             <button type="button" @click="closeCreateModal" class="btn cancel">Отмена</button>
@@ -184,7 +194,8 @@ export default {
       newBooking: {
         type: '',
         time: '',
-        name: ''
+        name: '',
+        phone: '' // Добавляем поле phone
       },
       sortOrders: {
         type: 'asc',
@@ -200,9 +211,11 @@ export default {
       filters: {
         type: '',
         name: '',
-        date: ''
+        date: '',
+        phone: '' // Переносим phone сюда только если он нужен для фильтрации
       },
-      todayDate: this.getTodayDate()
+      todayDate: this.getTodayDate(),
+      minBookingTime: '' // Добавляем minBookingTime
     };
   },
   computed: {
@@ -252,8 +265,8 @@ export default {
     async fetchBookings() {
       try {
         const response = await axios.get('http://localhost:8080/api/bookings/admin', { withCredentials: true });
-        // Предполагаем, что API возвращает объект с массивом bookings
-        this.bookings = response.data.bookings;
+        // Убедитесь, что возвращаемые данные содержат список бронирований
+        this.bookings = response.data.bookings; // или response.data если это не объект с полем bookings
         this.calculateTotalPages();
       } catch (error) {
         console.error('Ошибка при загрузке бронирований:', error);
@@ -274,7 +287,7 @@ export default {
       return new Date(bookingTime) > new Date();
     },
     async deleteBooking(bookingId) {
-      if (!confirm(`Вы уверены, что хотите удалить бронь #${bookingId}?`)) {
+      if (!confirm(`Вы уверены, что хотите удалить бронь пользователя?`)) {
         return;
       }
       try {
@@ -338,14 +351,25 @@ export default {
         this.currentPage--;
       }
     },
-    // Создание бронирования
     openCreateBookingModal() {
       this.showCreateModal = true;
       this.newBooking = {
         type: '',
         time: '',
-        name: ''
+        name: '',
+        phone: ''
       };
+      this.setMinBookingTime();
+    },
+    setMinBookingTime() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+
+      this.minBookingTime = `${year}-${month}-${day}T${hours}:${minutes}`;
     },
     closeCreateModal() {
       this.showCreateModal = false;
@@ -356,7 +380,6 @@ export default {
       };
     },
     async createBooking() {
-      // Проверка, что время брони не в прошлом
       const selectedTime = new Date(this.newBooking.time);
       const now = new Date();
       if (selectedTime < now) {
@@ -364,7 +387,6 @@ export default {
         return;
       }
 
-      // Проверка длины ФИО
       if (this.newBooking.name.length > 80) {
         alert('ФИО бронирующего не может превышать 80 символов.');
         return;
@@ -372,13 +394,14 @@ export default {
 
       try {
         const newBookingData = {
-          booking_type: this.newBooking.type, // Изменено
-          booking_time: new Date(this.newBooking.time).toISOString(), // Изменено
-          booker_full_name: this.newBooking.name // Изменено
+          booking_type: this.newBooking.type,
+          booking_time: new Date(this.newBooking.time).toISOString(),
+          booker_full_name: this.newBooking.name,
+          phone_number: this.newBooking.phone // Добавляем отправку phone_number
         };
+
         const response = await axios.post('http://localhost:8080/api/createOrder/admin', newBookingData, { withCredentials: true });
 
-        // Проверяем, есть ли данные бронирования в ответе
         if (response.data.booking) {
           this.bookings.push(response.data.booking);
           this.bookings = this.sortedBookings; // Обновляем сортировку после добавления
@@ -396,6 +419,21 @@ export default {
         }
       }
     },
+    formatPhone() {
+      let phone = this.newBooking.phone.replace(/\D/g, ''); // Удаляем все нецифровые символы
+
+      // Убедимся, что номер начинается с 7
+      if (phone.length > 0 && phone[0] !== '7') {
+        phone = '7' + phone.slice(1);
+      }
+
+      // Ограничиваем длину до 11 цифр
+      if (phone.length > 11) {
+        phone = phone.slice(0, 11);
+      }
+
+      this.newBooking.phone = phone;
+    },
     getTodayDate() {
       const date = new Date();
       const year = date.getFullYear();
@@ -405,7 +443,6 @@ export default {
     }
   },
   watch: {
-    // Обновляем пагинацию при изменении фильтров или бронирований
     filters: {
       handler() {
         this.currentPage = 1;
@@ -438,20 +475,8 @@ h2 {
   color: #333;
 }
 
-.top-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.sort-buttons {
-  display: flex;
-  gap: 10px;
-}
-
 .sort-buttons .btn.sort {
-  background-color: #4CAF50; /* Зеленый цвет для кнопок сортировки */
+  background-color: #4CAF50;
   color: white;
 }
 
@@ -460,7 +485,7 @@ h2 {
 }
 
 .create-booking-button .btn.create {
-  background-color: #4CAF50; /* Зеленый цвет для кнопки создания */
+  background-color: #4CAF50;
   color: white;
 }
 
@@ -500,7 +525,7 @@ h2 {
 }
 
 .btn.edit {
-  background-color: #4CAF50; /* Зеленый цвет для кнопки редактирования */
+  background-color: #4CAF50;
   margin-right: 5px;
 }
 
@@ -509,7 +534,7 @@ h2 {
 }
 
 .btn.delete {
-  background-color: #F44336; /* Красный цвет для кнопки удаления */
+  background-color: #F44336;
 }
 
 .btn.delete:hover {
@@ -517,7 +542,7 @@ h2 {
 }
 
 .btn.pagination-btn {
-  background-color: #4CAF50; /* Зеленый цвет для кнопок пагинации */
+  background-color: #4CAF50;
   color: white;
 }
 
@@ -547,7 +572,7 @@ h2 {
 }
 
 .card {
-  background-color: #4CAF50; /* Зеленый цвет */
+  background-color: #4CAF50;
   color: #fff;
   border-radius: 10px;
   padding: 15px;
@@ -612,7 +637,7 @@ h2 {
 }
 
 .btn.save {
-  background-color: #4CAF50; /* Зеленый цвет для кнопки сохранения */
+  background-color: #4CAF50;
   color: white;
 }
 
@@ -621,7 +646,7 @@ h2 {
 }
 
 .btn.cancel {
-  background-color: #4CAF50; /* Зеленый цвет для кнопки отмены */
+  background-color: #4CAF50;
   color: white;
 }
 
@@ -633,11 +658,11 @@ input[type="text"],
 input[type="datetime-local"],
 select {
   width: 100%;
-  padding: 12px; /* Увеличим padding для большего комфорта */
+  padding: 12px;
   margin: 10px 0;
   border: 1px solid #ccc;
   border-radius: 4px;
-  font-size: 16px; /* Увеличим размер шрифта */
+  font-size: 16px;
   transition: border-color 0.3s ease-in-out;
 }
 
@@ -656,14 +681,13 @@ select:hover {
 
 /* Стили для меток (label) */
 label {
-  font-size: 16px; /* Увеличим размер шрифта для label */
+  font-size: 16px;
   margin-bottom: 5px;
   display: block;
   font-weight: bold;
   color: #333;
 }
 
-/* Стили для блоков фильтрации */
 .filter-wrapper {
   display: flex;
   gap: 15px;
@@ -708,9 +732,8 @@ label {
   border-color: #aaa;
 }
 
-/* Стили для кнопок фильтрации */
 .filter-wrapper .btn.filter {
-  background-color: #4CAF50; /* Зеленый цвет для кнопок фильтрации */
+  background-color: #4CAF50;
   color: white;
   padding: 8px 12px;
   border-radius: 4px;
@@ -733,11 +756,11 @@ input[type="datetime-local"],
 select,
 input[type="date"] {
   width: 100%;
-  padding: 12px; /* Увеличим padding для большего комфорта */
+  padding: 12px;
   margin: 10px 0;
   border: 1px solid #ccc;
   border-radius: 4px;
-  font-size: 16px; /* Увеличим размер шрифта */
+  font-size: 16px;
   transition: border-color 0.3s ease-in-out;
 }
 
@@ -756,16 +779,15 @@ input[type="date"]:hover {
   border-color: #aaa;
 }
 
-/* Стили для меток (label) */
 label {
-  font-size: 16px; /* Увеличим размер шрифта для label */
+  font-size: 16px;
   margin-bottom: 5px;
   display: block;
   font-weight: bold;
   color: #333;
 }
 
-/* Специальные стили для поля "date" */
+
 input[type="date"] {
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -774,7 +796,7 @@ input[type="date"] {
 }
 
 input[type="date"]:focus {
-  border-color: #4CAF50; /* Зеленый цвет для фокуса */
+  border-color: #4CAF50;
 }
 
 input[type="date"]:hover {

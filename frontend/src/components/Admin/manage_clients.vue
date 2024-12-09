@@ -290,10 +290,10 @@ export default {
       try {
         const clientData = {
           FullName: this.newClient.FullName,
-          phone: this.newClient.PhoneNumber,
-          email: this.newClient.Email
+          PhoneNumber: this.newClient.PhoneNumber,
+          Email: this.newClient.Email
         };
-        const response = await axios.post('http://localhost:8080/admin/clients', clientData, {
+        const response = await axios.post('http://localhost:8080/api/admin/clients', clientData, {
           withCredentials: true
         });
 

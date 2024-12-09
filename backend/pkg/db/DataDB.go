@@ -6,9 +6,9 @@ import (
 
 type Client struct {
 	ClientID    int    `gorm:"column:client_id;primaryKey;autoIncrement"`
-	FullName    string `gorm:"column:full_name;not null"`
-	PhoneNumber string `gorm:"column:phone_number;not null;unique"`
-	Email       string `gorm:"column:email;not null;unique"`
+	FullName    string `gorm:"column:full_name;not null" json:"FullName"`
+	PhoneNumber string `gorm:"column:phone_number;not null;unique" json:"PhoneNumber"`
+	Email       string `gorm:"column:email;not null;unique" json:"Email"`
 }
 
 type Order struct {
@@ -39,10 +39,11 @@ type Service struct {
 
 type Booking struct {
 	BookingID      int       `gorm:"column:booking_id;primaryKey;autoIncrement" json:"id"`
-	BookingType    string    `gorm:"column:booking_type;not null" json:"type"`
-	OrderID        int       `gorm:"column:order_id;not null" json:"orderId"`
-	BookingTime    time.Time `gorm:"column:booking_time;not null" json:"time"`
-	BookerFullName string    `gorm:"column:booker_full_name;not null" json:"name"`
+	BookingType    string    `gorm:"column:booking_type;not null" json:"booking_type"`
+	OrderID        int       `gorm:"column:order_id;not null;autoIncrement" json:"order_id"`
+	BookingTime    time.Time `gorm:"column:booking_time;not null" json:"booking_time"`
+	BookerFullName string    `gorm:"column:booker_full_name;not null" json:"booker_full_name"`
+	ClientID       int       `gorm:"column:client_id;" json:"client_id"`
 }
 
 type Material struct {

@@ -42,6 +42,7 @@ func main() {
 	webApp.Use(Authentification.SessionMiddleware(rdb))
 
 	webApp.Post("/api/login", Authentification.Authorize(dbu, rdb))
+	webApp.Post("/api/register", Authentification.Registration(dbu))
 	webApp.Get("/api/CheckRole", Authentification.CheckUserRole(rdb))
 	webApp.Get("/api/user", handlers.GetUserName(rdb))
 	webApp.Get("/api/orders", handlers.ClientOrdersApi(dbu, rdb))
@@ -67,7 +68,8 @@ func main() {
 	webApp.Delete("/api/bookings/admin/:bookingId", handlers.DeleteAdminBooking(dbu))
 	webApp.Put("/api/services/:service_id", handlers.UpdateService(dbu))
 	webApp.Put("/api/equipment/:equipment_id", handlers.UpdateEquipment(dbu))
-	webApp.Get("/api/admin/clients", handlers.AddClient(dbu))
+	webApp.Get("/api/admin/clients", handlers.GetClients(dbu))
+	webApp.Post("/api/admin/clients", handlers.AddClient(dbu))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))
