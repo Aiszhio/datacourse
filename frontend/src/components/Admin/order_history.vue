@@ -191,6 +191,11 @@ export default {
   computed: {
     filteredOrders() {
       return this.orders.filter(order => {
+        // Добавьте проверку на наличие clientName и service
+        if (!order.clientName || !order.service) {
+          return false; // Если данных нет, не показывать заказ
+        }
+
         const matchesClientName = order.clientName
             .toLowerCase()
             .includes(this.searchClientName.toLowerCase());

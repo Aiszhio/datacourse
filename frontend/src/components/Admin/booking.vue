@@ -198,9 +198,9 @@ export default {
         phone: '' // Добавляем поле phone
       },
       sortOrders: {
-        type: 'asc',
-        time: 'asc',
-        name: 'asc'
+        booking_type: 'asc',
+        booking_time: 'asc',
+        booker_full_name: 'asc'
       },
       currentSortKey: '',
       // Пагинация
@@ -222,13 +222,13 @@ export default {
     filteredBookings() {
       return this.bookings.filter(booking => {
         const matchesType = this.filters.type
-            ? booking.type === this.filters.type
+            ? booking.booking_type === this.filters.type
             : true;
         const matchesName = this.filters.name
-            ? booking.name.toLowerCase().includes(this.filters.name.toLowerCase())
+            ? booking.booker_full_name.toLowerCase().includes(this.filters.name.toLowerCase())
             : true;
         const matchesDate = this.filters.date
-            ? new Date(booking.time).toISOString().split('T')[0] === this.filters.date
+            ? new Date(booking.booking_time).toISOString().split('T')[0] === this.filters.date
             : true;
         return matchesType && matchesName && matchesDate;
       });
@@ -242,7 +242,7 @@ export default {
         let bVal = b[this.currentSortKey];
 
         // Для даты преобразуем в объекты Date
-        if (this.currentSortKey === 'time') {
+        if (this.currentSortKey === 'booking_time') {
           aVal = new Date(aVal);
           bVal = new Date(bVal);
         } else if (typeof aVal === 'string') {
@@ -266,7 +266,7 @@ export default {
       try {
         const response = await axios.get('http://localhost:8080/api/bookings/admin', { withCredentials: true });
         // Убедитесь, что возвращаемые данные содержат список бронирований
-        this.bookings = response.data.bookings; // или response.data если это не объект с полем bookings
+        this.bookings = response.data.bookings || []; // или response.data если это не объект с полем bookings
         this.calculateTotalPages();
       } catch (error) {
         console.error('Ошибка при загрузке бронирований:', error);
@@ -287,7 +287,7 @@ export default {
       return new Date(bookingTime) > new Date();
     },
     async deleteBooking(bookingId) {
-      if (!confirm(`Вы уверены, что хотите удалить бронь пользователя?`)) {
+      if (!confirm(`Вы уверены, что хотите удалить бронь #${bookingId}?`)) {
         return;
       }
       try {
@@ -376,7 +376,8 @@ export default {
       this.newBooking = {
         type: '',
         time: '',
-        name: ''
+        name: '',
+        phone: ''
       };
     },
     async createBooking() {
@@ -394,22 +395,20 @@ export default {
 
       try {
         const newBookingData = {
-          booking_type: this.newBooking.type,
-          booking_time: new Date(this.newBooking.time).toISOString(),
-          booker_full_name: this.newBooking.name,
-          phone_number: this.newBooking.phone // Добавляем отправку phone_number
+          booking_type: this.newBooking.type, // Изменено
+          booking_time: new Date(this.newBooking.time).toISOString(), // Изменено
+          booker_full_name: this.newBooking.name, // Изменено
+          phone_number: this.newBooking.phone // Добавляем номер телефона, если требуется на сервере
         };
-
         const response = await axios.post('http://localhost:8080/api/createOrder/admin', newBookingData, { withCredentials: true });
 
         if (response.data.booking) {
           this.bookings.push(response.data.booking);
-          this.bookings = this.sortedBookings; // Обновляем сортировку после добавления
+          this.calculateTotalPages(); // Пересчитываем количество страниц
         }
 
         alert('Бронирование успешно создано.');
         this.closeCreateModal();
-        this.calculateTotalPages();
       } catch (error) {
         console.error('Ошибка при создании бронирования:', error);
         if (error.response && error.response.data && error.response.data.error) {

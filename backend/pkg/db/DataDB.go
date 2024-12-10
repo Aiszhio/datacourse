@@ -70,6 +70,7 @@ type MaterialPurchase struct {
 
 type Equipment struct {
 	EquipmentID int    `gorm:"column:equipment_id;primaryKey;autoIncrement" json:"equipment_id"`
+	Type        string `gorm:"column:type" json:"type"`
 	Brand       string `gorm:"column:brand;not null" json:"brand"`
 	Model       string `gorm:"column:model;not null" json:"model"`
 }
