@@ -10,6 +10,7 @@ import (
 )
 
 type EquipmentToUpdate struct {
+	Type  string `gorm:"column:type;not null" json:"type"`
 	Brand string `gorm:"column:brand;not null" json:"brand"`
 	Model string `gorm:"column:model;not null" json:"model"`
 }
@@ -64,18 +65,6 @@ func UpdateEquipment(db *gorm.DB) fiber.Handler {
 }
 
 func ValidateEquipment(updatedEquipment EquipmentToUpdate) error {
-	validBrands := []string{"Canon", "Nikon", "Sony", "Profoto", "Elinchrom", "Fujifilm", "Epson", "Wacom", "Hasselblad"}
-
-	isValidBrand := false
-	for _, brand := range validBrands {
-		if regexp.MustCompile("(?i)^" + brand + "$").MatchString(updatedEquipment.Brand) {
-			isValidBrand = true
-			break
-		}
-	}
-	if !isValidBrand {
-		return errors.New("Неверный бренд. Допустимые бренды: Canon, Nikon, Sony, Profoto, Elinchrom, Fujifilm, Epson, Wacom, Hasselblad.")
-	}
 
 	modelRegex := "^[a-zA-Z0-9- ]+$"
 	if !regexp.MustCompile(modelRegex).MatchString(updatedEquipment.Model) {

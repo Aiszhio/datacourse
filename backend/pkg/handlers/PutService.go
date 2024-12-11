@@ -52,7 +52,7 @@ func UpdateService(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		if err = ValidateServiceAdmin(updatedService); err != nil {
+		if err = ValidatePutService(updatedService); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": err.Error(),
 			})
@@ -71,7 +71,7 @@ func UpdateService(db *gorm.DB) fiber.Handler {
 	}
 }
 
-func ValidateServiceAdmin(service ServiceToUpdate) error {
+func ValidatePutService(service ServiceToUpdate) error {
 	validNames := []string{"Печать", "Фотокнига", "Фотоальбом", "Фотосессия", "Съемка", "Аренда"}
 
 	for _, name := range validNames {

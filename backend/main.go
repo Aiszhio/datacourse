@@ -60,6 +60,8 @@ func main() {
 	webApp.Post("/api/purchases", handlers.AddPurchase(dbu))
 	webApp.Get("/api/purchases", handlers.GetMaterialPurchases(dbu))
 	webApp.Get("/api/services/admin", handlers.GetServicesAndEquipment(dbu))
+	webApp.Post("/api/services/admin", handlers.AddService(dbu))
+	webApp.Post("/api/equipment/admin", handlers.AddEquipment(dbu))
 	webApp.Get("/api/bookings/admin", handlers.GetAdminBookings(dbu))
 	webApp.Delete("/api/bookings/:bookingID", handlers.DeleteBooking(dbu))
 	webApp.Put("/api/employees/:id/fire", handlers.FireWorker(dbu))

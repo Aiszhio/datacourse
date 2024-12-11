@@ -54,7 +54,8 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="(equipment) in sortedEquipment" :key="equipment.equipment_id">
+        <!-- Использование уникального ключа, так как equipment_id всегда присутствует -->
+        <tr v-for="equipment in sortedEquipment" :key="equipment.equipment_id">
           <td>{{ equipment.type }}</td>
           <td>{{ equipment.brand }}</td>
           <td>{{ equipment.model }}</td>
@@ -68,7 +69,7 @@
     </div>
 
     <!-- Модальные окна для добавления и редактирования -->
-    <div v-if="showModal" class="modal-overlay">
+    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal">
         <h3>{{ modalTitle }}</h3>
         <form @submit.prevent="saveItem">
@@ -119,7 +120,7 @@
           <div v-else>
             <button @click.prevent="subtractEquipment" type="button" class="btn danger">Списать</button>
           </div>
-          <button @click.prevent="closeModal" type="button" class="btn danger">Отмена</button>
+          <button @click="closeModal" type="button" class="btn danger">Отмена</button>
         </form>
       </div>
     </div>
@@ -162,14 +163,14 @@ export default {
   name: 'Services',
   data() {
     return {
-      services: [], // Группированные услуги с оборудованием
-      equipmentList: [], // Список всех оборудования
+      services: [], // Список услуг
+      equipmentList: [], // Список оборудования
       showModal: false,
       modalType: '',
       modalTitle: '',
       currentItem: {},
-      equipmentTypes: ['Принтер', 'Фотокамера', 'Видеокамера'], // Список типов оборудования
-      expandedServiceIds: [] // Для отслеживания развёрнутых услуг
+      equipmentTypes: ['Принтер', 'Фотокамера', 'Видеокамера'], // Типы оборудования
+      expandedServiceIds: [] // Отслеживание развёрнутых услуг
     };
   },
   created() {
@@ -178,12 +179,12 @@ export default {
   computed: {
     sortedServices() {
       return this.services
-          ? [...this.services].sort((a, b) => a.service_id - b.service_id) // Используйте правильные поля
+          ? [...this.services].sort((a, b) => a.service_id - b.service_id)
           : [];
     },
     sortedEquipment() {
       return this.equipmentList
-          ? [...this.equipmentList].sort((a, b) => a.equipment_id - b.equipment_id) // Используйте правильные поля
+          ? [...this.equipmentList].sort((a, b) => a.equipment_id - b.equipment_id)
           : [];
     }
   },
@@ -198,7 +199,6 @@ export default {
         this.equipmentList = response.data.equipment || [];
         console.log('Полученные услуги:', this.services);
         console.log('Список оборудования:', this.equipmentList);
-        // this.calculateTotalPages(); // Удалите или раскомментируйте, если добавите метод
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error);
         alert('Не удалось загрузить данные об услугах и оборудовании.');
@@ -226,6 +226,7 @@ export default {
 
     // Открытие модального окна для добавления услуги
     openAddServiceModal() {
+      console.log('Открытие модального окна для добавления услуги');
       this.modalType = 'service';
       this.modalTitle = 'Добавить услугу';
       this.currentItem = {
@@ -238,18 +239,20 @@ export default {
 
     // Открытие модального окна для редактирования услуги
     openEditServiceModal(service) {
+      console.log('Открытие модального окна для редактирования услуги:', service);
       this.modalType = 'service';
       this.modalTitle = 'Редактировать услугу';
       // Копируем объект, чтобы избежать прямого изменения оригинала
       this.currentItem = {
         ...service,
-        requiredEquipment: service.RequiredEquipment.map(eq => eq.equipment_id) // Исправлено на 'RequiredEquipment'
+        requiredEquipment: service.RequiredEquipment.map(eq => eq.equipment_id),
       };
       this.showModal = true;
     },
 
     // Открытие модального окна для редактирования оборудования
     openEditEquipmentModal(equipment) {
+      console.log('Открытие модального окна для редактирования оборудования:', equipment);
       this.modalType = 'equipment';
       this.modalTitle = 'Редактировать оборудование';
       this.currentItem = { ...equipment };
@@ -258,6 +261,7 @@ export default {
 
     // Открытие модального окна для добавления оборудования
     openAddEquipmentModal() {
+      console.log('Открытие модального окна для добавления оборудования');
       this.modalType = 'equipment';
       this.modalTitle = 'Добавить оборудование';
       this.currentItem = {
@@ -270,6 +274,7 @@ export default {
 
     // Открытие модального окна для списания оборудования
     openSubtractEquipmentModal(equipment) {
+      console.log('Открытие модального окна для списания оборудования:', equipment);
       this.modalType = 'subtractEquipment';
       this.modalTitle = 'Списать оборудование';
       this.currentItem = { ...equipment };
@@ -282,6 +287,7 @@ export default {
         if (this.currentItem.service_id) {
           // Редактирование услуги
           try {
+            console.log('Редактирование услуги:', this.currentItem);
             const response = await axios.put(
                 `http://localhost:8080/api/services/${this.currentItem.service_id}`,
                 {
@@ -291,12 +297,19 @@ export default {
                 },
                 { withCredentials: true }
             );
+            console.log('Ответ сервера при редактировании услуги:', response.data);
+
             // Обновляем услугу в списке
-            const index = this.services.findIndex(s => s.service_id === this.currentItem.service_id);
-            if (index !== -1) {
-              this.services[index] = response.data.service;
+            this.services = this.services.map(service =>
+                service.service_id === this.currentItem.service_id ? response.data : service
+            );
+
+            // Отображаем сообщение об успехе
+            if (response.data.message) {
+              alert(response.data.message);
+            } else {
+              alert('Услуга успешно обновлена.');
             }
-            alert('Услуга успешно обновлена.');
 
             // Закрытие модального окна
             this.closeModal();
@@ -311,6 +324,7 @@ export default {
         } else {
           // Добавление новой услуги
           try {
+            console.log('Добавление новой услуги:', this.currentItem);
             const response = await axios.post(
                 'http://localhost:8080/api/services/admin',
                 {
@@ -320,9 +334,19 @@ export default {
                 },
                 { withCredentials: true }
             );
+            console.log('Ответ сервера при добавлении услуги:', response.data);
+
+            const newService = response.data;
+
             // Добавляем новую услугу в список
-            this.services.push(response.data.service);
-            alert('Услуга успешно добавлена.');
+            this.services.push(newService);
+
+            // Отображаем сообщение об успехе
+            if (response.data.message) {
+              alert(response.data.message);
+            } else {
+              alert('Услуга успешно добавлена.');
+            }
 
             // Закрытие модального окна
             this.closeModal();
@@ -339,6 +363,7 @@ export default {
         if (this.currentItem.equipment_id) {
           // Редактирование оборудования
           try {
+            console.log('Редактирование оборудования:', this.currentItem);
             const response = await axios.put(
                 `http://localhost:8080/api/equipment/${this.currentItem.equipment_id}`,
                 {
@@ -348,14 +373,24 @@ export default {
                 },
                 { withCredentials: true }
             );
-            const index = this.equipmentList.findIndex(e => e.equipment_id === this.currentItem.equipment_id);
-            if (index !== -1) {
-              this.equipmentList.splice(index, 1, response.data.equipment);
+            console.log('Ответ сервера при редактировании оборудования:', response.data);
+
+            const updatedEquipment = response.data;
+
+            // Обновляем оборудование в списке
+            this.equipmentList = this.equipmentList.map(equipment =>
+                equipment.equipment_id === this.currentItem.equipment_id ? updatedEquipment : equipment
+            );
+
+            // Отображаем сообщение об успехе
+            if (response.data.message) {
+              alert(response.data.message);
+            } else {
+              alert('Оборудование успешно обновлено.');
             }
 
-            alert('Оборудование успешно обновлено.');
-            this.closeModal(); // Закрытие модального окна
-
+            // Закрытие модального окна
+            this.closeModal();
           } catch (error) {
             console.error('Ошибка при редактировании оборудования:', error);
             if (error.response && error.response.data && error.response.data.error) {
@@ -367,6 +402,7 @@ export default {
         } else {
           // Добавление нового оборудования
           try {
+            console.log('Добавление нового оборудования:', this.currentItem);
             const response = await axios.post(
                 'http://localhost:8080/api/equipment/admin',
                 {
@@ -376,9 +412,19 @@ export default {
                 },
                 { withCredentials: true }
             );
+            console.log('Ответ сервера при добавлении оборудования:', response.data);
+
+            const newEquipment = response.data;
+
             // Добавляем новое оборудование в список
-            this.equipmentList.push(response.data.equipment);
-            alert('Оборудование успешно добавлено.');
+            this.equipmentList.push(newEquipment);
+
+            // Отображаем сообщение об успехе
+            if (response.data.message) {
+              alert(response.data.message);
+            } else {
+              alert('Оборудование успешно добавлено.');
+            }
 
             // Закрытие модального окна
             this.closeModal();
@@ -394,6 +440,7 @@ export default {
       } else if (this.modalType === 'subtractEquipment') {
         // Списание оборудования
         try {
+          console.log('Списание оборудования:', this.currentItem);
           const equipmentID = this.currentItem.equipment_id;
 
           // Отправка запроса на списание оборудования
@@ -402,15 +449,17 @@ export default {
               {},
               { withCredentials: true }
           );
+          console.log('Ответ сервера при списании оборудования:', response.data);
 
-          if (response.data.message === 'Оборудование успешно списано') {
-            // Обновление списка оборудования
-            this.equipmentList = this.equipmentList.filter(e => e.equipment_id !== equipmentID);
-            alert('Оборудование успешно списано.');
-            this.closeModal();
+          if (response.data.message) {
+            alert(response.data.message);
           } else {
-            alert('Неизвестная ошибка: ' + (response.data.message || 'Попробуйте позже.'));
+            alert('Оборудование успешно списано.');
           }
+
+          // Обновление списка оборудования
+          this.equipmentList = this.equipmentList.filter(e => e.equipment_id !== equipmentID);
+          this.closeModal();
         } catch (error) {
           console.error('Ошибка при списании оборудования:', error);
           if (error.response && error.response.data && error.response.data.error) {
@@ -427,6 +476,7 @@ export default {
 
     // Закрытие модального окна
     closeModal() {
+      console.log('Закрытие модального окна');
       this.showModal = false;
       this.modalType = '';
       this.modalTitle = '';
@@ -450,11 +500,18 @@ export default {
       if (!requiredEquipment || requiredEquipment.length === 0) {
         return 'Нет оборудования';
       }
-      return requiredEquipment.map(eq => `${eq.type} - ${eq.brand} ${eq.model}`).join(', ');
+      return requiredEquipment.map(eq => {
+        if (eq.type && eq.brand && eq.model) {
+          return `${eq.type} - ${eq.brand} ${eq.model}`;
+        } else {
+          return 'Некорректные данные оборудования';
+        }
+      }).join(', ');
     },
 
     // Удаление услуги
     async openDeleteServiceModal(service) {
+      console.log('Открытие модального окна для удаления услуги:', service);
       this.modalType = 'deleteService';
       this.modalTitle = 'Удалить услугу';
       this.currentItem = { ...service };
@@ -462,17 +519,21 @@ export default {
     },
     async deleteService() {
       try {
+        console.log('Удаление услуги:', this.currentItem);
         const response = await axios.delete(
             `http://localhost:8080/api/services/${this.currentItem.service_id}`,
             { withCredentials: true }
         );
-        if (response.data.message === 'Услуга успешно удалена') {
-          this.services = this.services.filter(s => s.service_id !== this.currentItem.service_id);
-          alert('Услуга успешно удалена.');
-          this.closeModal();
+        console.log('Ответ сервера при удалении услуги:', response.data);
+
+        if (response.data.message) {
+          alert(response.data.message);
         } else {
-          alert('Неизвестная ошибка: ' + (response.data.message || 'Попробуйте позже.'));
+          alert('Услуга успешно удалена.');
         }
+
+        this.services = this.services.filter(s => s.service_id !== this.currentItem.service_id);
+        this.closeModal();
       } catch (error) {
         console.error('Ошибка при удалении услуги:', error);
         if (error.response && error.response.data && error.response.data.error) {
