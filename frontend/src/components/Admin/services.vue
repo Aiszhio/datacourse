@@ -108,6 +108,7 @@
           </div>
 
           <!-- Модальное окно для списания оборудования -->
+          <!-- Модальное окно для списания оборудования -->
           <div v-if="modalType === 'subtractEquipment'">
             <p>Вы уверены, что хотите списать оборудование:</p>
             <p><strong>{{ currentItem.type }} - {{ currentItem.brand }} {{ currentItem.model }}</strong></p>
@@ -115,7 +116,7 @@
 
           <!-- Кнопки действия -->
           <div v-if="modalType !== 'subtractEquipment'">
-            <button type="submit" class="btn">Сохранить</button>
+            <button type="submit" class="btn">Удалить</button>
           </div>
           <div v-else>
             <button @click.prevent="subtractEquipment" type="button" class="btn danger">Списать</button>
@@ -248,6 +249,37 @@ export default {
         requiredEquipment: service.RequiredEquipment.map(eq => eq.equipment_id),
       };
       this.showModal = true;
+    },
+
+    async subtractEquipment() {
+      try {
+        console.log('Списание оборудования:', this.currentItem);
+        const equipmentID = this.currentItem.equipment_id;
+
+        // Отправка DELETE запроса на сервер
+        const response = await axios.delete(
+            `http://localhost:8080/api/equipment/${equipmentID}`,
+            { withCredentials: true }
+        );
+        console.log('Ответ сервера при списании оборудования:', response.data);
+
+        if (response.data.message) {
+          alert(response.data.message);
+        } else {
+          alert('Оборудование успешно списано.');
+        }
+
+        // Обновление списка оборудования в UI
+        this.equipmentList = this.equipmentList.filter(e => e.equipment_id !== equipmentID);
+        this.closeModal();
+      } catch (error) {
+        console.error('Ошибка при списании оборудования:', error);
+        if (error.response && error.response.data && error.response.data.error) {
+          alert(`Ошибка: ${error.response.data.error}`);
+        } else {
+          alert('Не удалось списать оборудование.');
+        }
+      }
     },
 
     // Открытие модального окна для редактирования оборудования

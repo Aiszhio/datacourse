@@ -34,66 +34,70 @@ func FireWorker(db *gorm.DB) fiber.Handler {
 		if err = db.First(&employee, workerID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-					"message": "Employee not found.",
+					"error": "Сотрудник не найден",
 				})
 			}
 			fmt.Printf("Error retrieving employee: %v\n", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"message": "Error retrieving employee.",
+				"error": "Ошибка при поиске сотрудника",
 			})
 		}
 
 		if employee.Status == "Уволен" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"message": "Employee is already fired.",
+				"error": "Сотрудник уже уволен",
 			})
 		}
 
-		loc, err := time.LoadLocation("Europe/Moscow")
-		if err != nil {
-			fmt.Printf("Error loading location: %v\n", err) // Для отладки
+		nowUtc := time.Now().UTC()
+		fmt.Printf("Current time in UTC: %s\n", nowUtc.Format(time.RFC3339))
+
+		var upcomingOrders int64
+		if err = db.Table("orders").
+			Where("employee_id = ? AND order_date > ?", workerID, nowUtc).
+			Count(&upcomingOrders).Error; err != nil {
+			fmt.Printf("Error checking upcoming orders: %v\n", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"message": "Error loading location.",
-			})
-		}
-		now := time.Now().In(loc)
-		fmt.Printf("Current time in Moscow: %s\n", now)
-
-		var activeBookings int64
-		if err = db.Table("booking_to_orders").
-			Where("employee_id = ? AND order_end > ?", workerID, now).
-			Count(&activeBookings).Error; err != nil {
-			fmt.Printf("Error checking active bookings: %v\n", err)
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"message": "Error checking active bookings.",
+				"message": "Ошибка при проверке предстоящих заказов.",
 			})
 		}
 
-		fmt.Printf("Active bookings for employee %d: %d\n", workerID, activeBookings)
+		fmt.Printf("Upcoming orders for employee %d: %d\n", workerID, upcomingOrders)
 
-		if activeBookings > 0 {
+		if upcomingOrders > 0 {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"message": "У данного сотрудника есть предстоящие заказы.",
+				"message": "Сотрудника нельзя уволить, так как у него есть предстоящие заказы.",
 			})
 		}
 
 		if err = db.Model(&employee).Update("status", "Уволен").Error; err != nil {
 			fmt.Printf("Error updating employee status: %v\n", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"message": "Error updating employee status.",
+				"message": "Ошибка при обновлении статуса сотрудника.",
 			})
 		}
 
 		fmt.Printf("Employee %d fired successfully.\n", workerID)
 
+		loc, err := time.LoadLocation("Europe/Moscow")
+		if err != nil {
+			fmt.Printf("Error loading Moscow location: %v\n", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"message": "Ошибка при загрузке местоположения.",
+			})
+		}
+
+		hireDateMsk := employee.HireDate.In(loc).Format(time.RFC3339)
+		birthDateMsk := employee.BirthDate.In(loc).Format(time.RFC3339)
+
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"message": "Employee has been fired successfully.",
+			"message": "Сотрудник успешно уволен.",
 			"worker": fiber.Map{
 				"employee_id":   employee.EmployeeID,
 				"full_name":     employee.FullName,
 				"position":      employee.Position,
-				"hire_date":     employee.HireDate,
-				"birth_date":    employee.BirthDate,
+				"hire_date":     hireDateMsk,
+				"birth_date":    birthDateMsk,
 				"passport_data": employee.PassportData,
 				"phone_number":  employee.PhoneNumber,
 				"status":        employee.Status,

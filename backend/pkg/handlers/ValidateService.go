@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -37,6 +38,34 @@ func ValidateService(input ServiceInput, db *gorm.DB) error {
 		if int(count) != len(input.RequiredEquipment) {
 			return fmt.Errorf("Система не обнаружила часть оборудования")
 		}
+	}
+
+	return nil
+}
+
+func ValidateDeleteService(serviceID int, db *gorm.DB) error {
+	now := time.Now()
+
+	var orderIDs []int
+	if err := db.Table("order_contents").
+		Where("service_id = ?", serviceID).
+		Pluck("order_id", &orderIDs).Error; err != nil {
+		return fmt.Errorf("Ошибка при получении идентификаторов заказов для услуги")
+	}
+
+	if len(orderIDs) == 0 {
+		return nil
+	}
+
+	var count int64
+	if err := db.Table("orders").
+		Where("order_id IN ? AND receipt_date > ?", orderIDs, now).
+		Count(&count).Error; err != nil {
+		return fmt.Errorf("Ошибка при проверке занятости услуги в заказах")
+	}
+
+	if count > 0 {
+		return fmt.Errorf("Услуга используется в активных или будущих заказах")
 	}
 
 	return nil

@@ -16,7 +16,6 @@ type ClientOrder struct {
 
 func AddOrder(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var orderContent db2.OrderContent
 		var clientOrder ClientOrder
 		var order db2.Order
 
@@ -26,8 +25,6 @@ func AddOrder(db *gorm.DB) fiber.Handler {
 				"error": "Ошибка парсинга данных",
 			})
 		}
-
-		fmt.Printf("Полученные данные: %+v\n", clientOrder)
 
 		order.ServiceName = clientOrder.ServiceName
 		order.OrderDate = clientOrder.OrderDate
@@ -59,8 +56,6 @@ func AddOrder(db *gorm.DB) fiber.Handler {
 
 		order.EmployeeID = employeeID
 
-		fmt.Printf("Поиск услуги по имени: %s\n", clientOrder.ServiceName)
-
 		var service db2.Service
 		if err = db.Table("services").Where("name = ?", clientOrder.ServiceName).First(&service).Error; err != nil {
 			fmt.Println("Ошибка поиска услуги:", err)
@@ -68,9 +63,16 @@ func AddOrder(db *gorm.DB) fiber.Handler {
 				"error": "Такая услуга не найдена",
 			})
 		}
-		orderContent.ServiceID = service.ServiceID
 
-		fmt.Printf("Найден ServiceID: %d\n", service.ServiceID)
+		orderContent := db2.OrderContent{
+			ServiceID: service.ServiceID,
+		}
+
+		if err = ValidateOrderEquipment(order, db); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
 
 		tx := db.Begin()
 		if tx.Error != nil {
@@ -109,6 +111,8 @@ func AddOrder(db *gorm.DB) fiber.Handler {
 				"error": "Ошибка при завершении транзакции",
 			})
 		}
+
+		fmt.Println(order.OrderDate, order.ReceiptDate)
 
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"message": "Заказ успешно сохранен",

@@ -38,7 +38,7 @@
         <input
             type="date"
             v-model="newEmployee.birth_date"
-            :max="minBirthDate"
+            :max="maxBirthDate"
             required
         />
 
@@ -81,8 +81,20 @@
               </span>
           </th>
           <th>Должность</th>
-          <th>Дата оформления</th>
-          <th>День рождения</th>
+          <th @click="sortBy('hireDate')" class="sortable">
+            Дата оформления
+            <span v-if="sortKey === 'hireDate'">
+                <span v-if="sortOrder === 'asc'">&#9650;</span>
+                <span v-else>&#9660;</span>
+              </span>
+          </th>
+          <th @click="sortBy('birthDate')" class="sortable">
+            День рождения
+            <span v-if="sortKey === 'birthDate'">
+                <span v-if="sortOrder === 'asc'">&#9650;</span>
+                <span v-else>&#9660;</span>
+              </span>
+          </th>
           <th>Паспортные данные</th>
           <th>Номер телефона</th>
           <th @click="sortBy('status')" class="sortable">
@@ -142,7 +154,7 @@
       </button>
     </div>
 
-    <div v-if="showEditEmployeeModal" class="modal-overlay">
+    <div v-if="showEditEmployeeModal" class="modal-overlay" @click.self="closeEditEmployeeModal">
       <div class="modal">
         <h3>Редактировать сотрудника</h3>
 
@@ -182,7 +194,7 @@
               id="edit-birthDate"
               type="date"
               v-model="currentEmployee.birthDate"
-              :max="minBirthDate"
+              :max="maxBirthDate"
               required
           />
 
@@ -203,6 +215,16 @@
               required
               maxlength="12"
           />
+
+          <label for="edit-status">Статус</label>
+          <select
+              id="edit-status"
+              v-model="currentEmployee.status"
+              required
+          >
+            <option value="Работает">Работает</option>
+            <option value="Уволен">Уволен</option>
+          </select>
 
           <button type="submit" class="btn">Сохранить</button>
           <button type="button" @click="closeEditEmployeeModal" class="btn danger">Отмена</button>
@@ -241,6 +263,17 @@
 </template>
 
 <script>
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import localizedFormat from 'dayjs/plugin/localizedFormat';
+import 'dayjs/locale/ru';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(localizedFormat);
+dayjs.locale('ru'); // Устанавливаем русскую локаль
+
 export default {
   name: 'ManageEmployees',
   data() {
@@ -268,7 +301,7 @@ export default {
         status: ''
       },
       displayCountEmployees: 10,
-      sortKey: '', // Ключ для сортировки ('name' или 'status')
+      sortKey: '', // Ключ для сортировки ('name', 'hireDate', 'birthDate', 'status')
       sortOrder: 'asc', // Порядок сортировки ('asc' или 'desc')
     };
   },
@@ -297,17 +330,11 @@ export default {
     canLoadMoreEmployees() {
       return this.displayCountEmployees < this.employees.length;
     },
-    minBirthDate() {
-      const today = new Date();
-      today.setFullYear(today.getFullYear() - 18);
-      return today.toISOString().split('T')[0];
+    maxBirthDate() {
+      return dayjs().subtract(18, 'year').format('YYYY-MM-DD'); // Максимальная дата рождения (старше 18 лет)
     },
     todayDate() {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      return dayjs().format('YYYY-MM-DD');
     },
     // Вычисляемое свойство для форматирования номера телефона при добавлении
     formattedPhoneNumber: {
@@ -370,12 +397,12 @@ export default {
         this.sortOrder = 'asc';
       }
     },
-    // Вспомогательная функция для форматирования даты в RFC3339
+    // Вспомогательная функция для форматирования даты в ISO8601
     formatDateForInput(dateString) {
       if (!dateString) return '';
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return ''; // Проверка на валидность даты
-      return date.toISOString(); // Возвращает дату в формате RFC 3339
+      const date = dayjs(dateString);
+      if (!date.isValid()) return ''; // Проверка на валидность даты
+      return date.toISOString(); // Возвращает "YYYY-MM-DDTHH:mm:ssZ"
     },
 
     // Метод для получения списка сотрудников
@@ -395,13 +422,13 @@ export default {
 
         const data = await response.json();
 
-        // Измененный маппинг: используем employee_id вместо id и сохраняем даты в "YYYY-MM-DD"
+        // Измененный маппинг: используем employee_id вместо id и сохраняем даты в ISO8601
         this.employees = data.employees.map(employee => ({
           id: employee.employee_id,
           name: employee.full_name,
           position: employee.position,
-          hireDate: employee.hire_date, // "YYYY-MM-DD"
-          birthDate: employee.birth_date, // "YYYY-MM-DD"
+          hireDate: dayjs(employee.hire_date).toISOString(), // ISO8601
+          birthDate: dayjs(employee.birth_date).toISOString(), // ISO8601
           passport_data: employee.passport_data,
           phone_number: employee.phone_number,
           status: employee.status
@@ -420,20 +447,19 @@ export default {
       const { full_name, position, hire_date, birth_date, passport_data, phone_number } = this.newEmployee;
 
       // Валидация возраста
-      const birthDateObj = new Date(birth_date);
-      const today = new Date();
-      today.setFullYear(today.getFullYear() - 18);
-      if (birthDateObj > today) {
+      const birthDateObj = dayjs(birth_date);
+      const today = dayjs().subtract(18, 'year');
+      if (birthDateObj.isAfter(today)) {
         alert('Сотрудник должен быть старше 18 лет.');
         return;
       }
 
-      // Форматируем данные для отправки на сервер в RFC3339
+      // Форматируем данные для отправки на сервер в ISO8601
       const formattedEmployee = {
         full_name: full_name,
         position: position,
-        hire_date: this.formatDateForInput(hire_date), // Формат RFC3339
-        birth_date: this.formatDateForInput(birth_date), // Формат RFC3339
+        hire_date: this.formatDateForInput(hire_date), // ISO8601
+        birth_date: this.formatDateForInput(birth_date), // ISO8601
         passport_data: passport_data.replace(/\s/g, ''),
         phone_number: phone_number.replace(/-/g, ''),
         status: 'Работает' // Добавляем статус по умолчанию
@@ -469,11 +495,11 @@ export default {
 
         // Добавляем нового сотрудника в список
         this.employees.push({
-          id: addedEmployee.worker.id,
+          id: addedEmployee.worker.employee_id,
           name: addedEmployee.worker.full_name,
           position: addedEmployee.worker.position,
-          hireDate: addedEmployee.worker.hire_date, // "YYYY-MM-DD"
-          birthDate: addedEmployee.worker.birth_date, // "YYYY-MM-DD"
+          hireDate: dayjs(addedEmployee.worker.hire_date).toISOString(), // ISO8601
+          birthDate: dayjs(addedEmployee.worker.birth_date).toISOString(), // ISO8601
           passport_data: addedEmployee.worker.passport_data,
           phone_number: addedEmployee.worker.phone_number,
           status: addedEmployee.worker.status
@@ -508,6 +534,11 @@ export default {
       const employee = this.employees.find(emp => emp.id === id);
       if (!employee) {
         alert('Сотрудник не найден.');
+        return;
+      }
+
+      if (employee.status === 'Уволен') {
+        alert('Сотрудник уже уволен.');
         return;
       }
 
@@ -560,12 +591,10 @@ export default {
     // В методах или computed свойствах
     formatDateForDateInput(dateString) {
       if (!dateString) return '';
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return ''; // Проверка на валидность даты
-      return date.toISOString().split('T')[0]; // Возвращает "YYYY-MM-DD"
+      const date = dayjs(dateString);
+      if (!date.isValid()) return ''; // Проверка на валидность даты
+      return date.toISOString(); // Возвращает "YYYY-MM-DDTHH:mm:ssZ"
     },
-
-
 
     // Метод для закрытия модального окна редактирования сотрудника
     closeEditEmployeeModal() {
@@ -587,20 +616,19 @@ export default {
       // Валидация: убедимся, что сотрудник старше 18 лет
       const { name, position, hireDate, birthDate, passport_data, phone_number, status } = this.currentEmployee;
 
-      const birthDateObj = new Date(birthDate);
-      const today = new Date();
-      today.setFullYear(today.getFullYear() - 18);
-      if (birthDateObj > today) {
+      const birthDateObj = dayjs(birthDate);
+      const today = dayjs().subtract(18, 'year');
+      if (birthDateObj.isAfter(today)) {
         alert('Сотрудник должен быть старше 18 лет.');
         return;
       }
 
-      // Форматируем данные для отправки на сервер в RFC3339
+      // Форматируем данные для отправки на сервер в ISO8601
       const formattedEmployee = {
         full_name: name,
         position: position,
-        hire_date: this.formatDateForInput(hireDate), // Формат RFC3339
-        birth_date: this.formatDateForInput(birthDate), // Формат RFC3339
+        hire_date: this.formatDateForInput(hireDate), // ISO8601
+        birth_date: this.formatDateForInput(birthDate), // ISO8601
         passport_data: passport_data.replace(/\s/g, ''),
         phone_number: phone_number.replace(/-/g, ''),
         status: status
@@ -630,14 +658,14 @@ export default {
         console.log('Обновленный сотрудник:', updatedEmployee.worker);
 
         // Обновляем данные сотрудника в локальном списке
-        const index = this.employees.findIndex(emp => emp.id === updatedEmployee.worker.id);
+        const index = this.employees.findIndex(emp => emp.id === updatedEmployee.worker.employee_id);
         if (index !== -1) {
           this.employees[index] = {
-            id: updatedEmployee.worker.id,
+            id: updatedEmployee.worker.employee_id,
             name: updatedEmployee.worker.full_name,
             position: updatedEmployee.worker.position,
-            hireDate: updatedEmployee.worker.hire_date, // "YYYY-MM-DD"
-            birthDate: updatedEmployee.worker.birth_date, // "YYYY-MM-DD"
+            hireDate: dayjs(updatedEmployee.worker.hire_date).toISOString(), // ISO8601
+            birthDate: dayjs(updatedEmployee.worker.birth_date).toISOString(), // ISO8601
             passport_data: updatedEmployee.worker.passport_data,
             phone_number: updatedEmployee.worker.phone_number,
             status: updatedEmployee.worker.status
@@ -654,9 +682,8 @@ export default {
 
     // Метод для форматирования даты для отображения пользователю
     formatDate(dateString) {
-      const options = { year: 'numeric', month: 'long', day: 'numeric' };
-      const date = new Date(dateString);
-      return date.toLocaleDateString('ru-RU', options);
+      if (!dateString) return '';
+      return dayjs(dateString).format('D MMMM YYYY'); // Формат: "8 января 2024"
     },
 
     // Метод для форматирования номера телефона для отображения в таблице
@@ -750,50 +777,9 @@ table td {
   text-align: left;
 }
 
-.card-panel {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.card {
-  background-color: #4CAF50;
-  border-radius: 10px;
-  padding: 10px;
-  margin-bottom: 5px;
-  width: 180px;
-  text-align: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.sortable {
   cursor: pointer;
-  color: white;
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-}
-
-.btn {
-  background-color: #4CAF50;
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1em;
-  margin: 10px;
-  transition: background-color 0.3s ease;
-}
-
-.btn.danger {
-  background-color: #f44336;
-}
-
-.btn:hover {
-  background-color: #45a049;
+  user-select: none;
 }
 
 .status-working {
@@ -806,6 +792,30 @@ table td {
   font-weight: bold;
 }
 
+.btn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  margin: 10px 5px 0 0;
+  transition: background-color 0.3s ease;
+}
+
+.btn.danger {
+  background-color: #f44336;
+}
+
+.btn.show-more-btn {
+  margin-top: 15px;
+}
+
+.btn:hover {
+  background-color: #45a049;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -816,13 +826,41 @@ table td {
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 1000;
 }
 
 .modal {
   background: white;
   padding: 20px;
   border-radius: 10px;
-  max-width: 400px;
+  max-width: 500px;
   width: 100%;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.card-panel {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.card {
+  background-color: #4CAF50;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 10px;
+  width: 180px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  color: white;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 </style>

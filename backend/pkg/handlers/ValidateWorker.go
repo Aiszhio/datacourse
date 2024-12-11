@@ -14,7 +14,7 @@ func SetWorker(db *gorm.DB, orderStart time.Time) (int, error) {
 
 	orderEnd := orderStart.Add(time.Hour)
 
-	err = db.Table("booking_to_orders").
+	err = db.Table("orders").
 		Select("distinct booking_to_orders.employee_id").
 		Joins("LEFT JOIN employees ON booking_to_orders.employee_id = employees.employee_id").
 		Where("booking_to_orders.order_date < ? AND booking_to_orders.order_end > ?", orderEnd, orderStart).

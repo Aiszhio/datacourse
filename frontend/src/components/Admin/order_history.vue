@@ -13,7 +13,7 @@
       <div class="filters">
         <label>
           Имя клиента:
-          <input v-model="searchClientName" class = "clientNameInput" placeholder="Поиск по имени клиента" />
+          <input v-model="searchClientName" class="clientNameInput" placeholder="Поиск по имени клиента" />
         </label>
         <label>
           Название услуги:
@@ -124,7 +124,7 @@
     </div>
 
     <!-- Модальное окно для добавления заказа -->
-    <div v-if="showModal" class="modal-overlay">
+    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal">
         <h3>{{ isEditing ? modalTitle : 'Добавить заказ' }}</h3>
         <form @submit.prevent="isEditing ? submitEdit() : submitAdd()">
@@ -236,39 +236,38 @@ export default {
     },
   },
   methods: {
-    async fetchOrders() {
-      this.isLoading = true;
-      try {
-        const response = await axios.get('http://localhost:8080/api/orders/admin', {
-          withCredentials: true,
-        });
-        console.log('Заказы получены:', response.data); // Логируем ответ с сервера
-        this.orders = response.data.orders || []; // Проверьте правильность структуры данных
-        this.extractUniqueServices();
-        this.calculateTotalPages();
-      } catch (error) {
-        console.error('Ошибка при загрузке заказов:', error);
-        alert('Не удалось загрузить заказы.');
-      } finally {
-        this.isLoading = false;
-      }
-    },
-    extractUniqueServices() {
-      // Извлекаем уникальные услуги из списка заказов
-      const servicesSet = new Set();
-      this.orders.forEach(order => {
-        servicesSet.add(order.service);
+    /**
+     * Преобразует дату в строку формата ISO 8601 с московским смещением (+03:00).
+     * @param {Date} date - Исходная дата.
+     * @returns {string} - Форматированная строка даты.
+     */
+    toMoscowTimeISOString(date) {
+      const options = {
+        timeZone: 'Europe/Moscow',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      };
+      const formatter = new Intl.DateTimeFormat('sv-SE', options);
+      const parts = formatter.formatToParts(date);
+      const dateParts = {};
+
+      parts.forEach(({ type, value }) => {
+        dateParts[type] = value;
       });
-      this.uniqueServices = Array.from(servicesSet).map(serviceName => ({
-        name: serviceName
-      }));
+
+      return `${dateParts.year}-${dateParts.month}-${dateParts.day}T${dateParts.hour}:${dateParts.minute}:${dateParts.second}+03:00`;
     },
-    calculateTotalPages() {
-      this.totalPages = Math.ceil(this.sortedOrders.length / this.pageSize) || 1;
-      if (this.currentPage > this.totalPages) {
-        this.currentPage = this.totalPages;
-      }
-    },
+
+    /**
+     * Форматирует дату для отображения в интерфейсе в московском времени.
+     * @param {string} dateString - Исходная строка даты.
+     * @returns {string} - Отформатированная строка даты.
+     */
     formatDateTime(dateString) {
       const date = new Date(dateString);
       // Преобразуем в МСК, добавляем временную зону
@@ -285,26 +284,11 @@ export default {
 
       return moscowTime;
     },
-    sortBy(key) {
-      if (this.currentSortKey === key) {
-        this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
-      } else {
-        this.currentSortKey = key;
-        // Устанавливаем начальный порядок сортировки для нового ключа
-        this.sortOrders[key] = 'asc';
-      }
-      this.calculateTotalPages();
-    },
-    nextPage() {
-      if (this.currentPage < this.totalPages) {
-        this.currentPage += 1;
-      }
-    },
-    prevPage() {
-      if (this.currentPage > 1) {
-        this.currentPage -= 1;
-      }
-    },
+
+    /**
+     * Получает текущую дату и время в формате, подходящем для input[type="datetime-local"].
+     * @returns {string} - Строка даты и времени в формате "YYYY-MM-DDTHH:mm:00".
+     */
     getCurrentDateTime() {
       const now = new Date();
       const year = now.getFullYear();
@@ -312,8 +296,12 @@ export default {
       const day = String(now.getDate()).padStart(2, '0');
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
-      return `${year}-${month}-${day}T${hours}:${minutes}:00`;  // Поменять на RFC3339 формат
+      return `${year}-${month}-${day}T${hours}:${minutes}:00`;  // Формат для datetime-local
     },
+
+    /**
+     * Открывает модальное окно для добавления нового заказа.
+     */
     openAddModal() {
       this.modalTitle = 'Добавить заказ';
       this.currentItem = {
@@ -324,18 +312,29 @@ export default {
       this.isEditing = false;
       this.showModal = true;
     },
+
+    /**
+     * Закрывает модальное окно и сбрасывает текущие данные.
+     */
     closeModal() {
       this.showModal = false;
       this.currentItem = {};
       this.isEditing = false;
     },
+
+    /**
+     * Отправляет запрос на добавление нового заказа.
+     */
     async submitAdd() {
       try {
+        // Преобразуем выбранную дату в московское время
+        const moscowOrderDate = this.toMoscowTimeISOString(new Date(this.currentItem.orderDate));
+
         // Формируем объект нового заказа
         const newOrder = {
           clientName: this.currentItem.clientName,
           service: this.currentItem.service,
-          orderDate: new Date(this.currentItem.orderDate).toISOString(), // Приводим к ISO формату
+          orderDate: moscowOrderDate, // Время в МСК
         };
 
         // Логирование данных перед отправкой
@@ -366,21 +365,183 @@ export default {
         }
       }
     },
+
+    /**
+     * Сортирует заказы по заданному ключу.
+     * @param {string} key - Ключ для сортировки.
+     */
+    sortBy(key) {
+      if (this.currentSortKey === key) {
+        this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.currentSortKey = key;
+        // Устанавливаем начальный порядок сортировки для нового ключа
+        this.sortOrders[key] = 'asc';
+      }
+      this.calculateTotalPages();
+    },
+
+    /**
+     * Переходит на следующую страницу пагинации.
+     */
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage += 1;
+      }
+    },
+
+    /**
+     * Возвращается на предыдущую страницу пагинации.
+     */
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage -= 1;
+      }
+    },
+
+    /**
+     * Открывает модальное окно для редактирования заказа.
+     * @param {object} order - Заказ для редактирования.
+     */
+    openEditModal(order) {
+      this.modalTitle = 'Редактировать заказ';
+      this.currentItem = { ...order };
+      this.isEditing = true;
+      this.showModal = true;
+    },
+
+    /**
+     * Отправляет запрос на редактирование существующего заказа.
+     */
+    async submitEdit() {
+      try {
+        // Преобразуем выбранную дату в московское время
+        const moscowOrderDate = this.toMoscowTimeISOString(new Date(this.currentItem.orderDate));
+
+        // Формируем объект обновлённого заказа
+        const updatedOrder = {
+          clientName: this.currentItem.clientName,
+          service: this.currentItem.service,
+          orderDate: moscowOrderDate, // Время в МСК
+        };
+
+        // Логирование данных перед отправкой
+        console.log('Отправляемые данные на сервер для редактирования:', JSON.stringify(updatedOrder));
+
+        const response = await axios.put(`http://localhost:8080/api/orders/${this.currentItem.id}`, updatedOrder, {
+          withCredentials: true,
+        });
+
+        if (response.data.message === 'Заказ успешно обновлён') {
+          const index = this.orders.findIndex(order => order.id === this.currentItem.id);
+          if (index !== -1) {
+            this.$set(this.orders, index, response.data.order);
+          }
+          alert('Заказ успешно обновлён.');
+          this.closeModal();
+          this.calculateTotalPages();
+        } else {
+          alert('Неизвестная ошибка: ' + (response.data.message || 'Попробуйте позже.'));
+        }
+
+      } catch (error) {
+        console.error('Ошибка при редактировании заказа:', error);
+
+        if (error.response) {
+          alert('Ошибка сервера: ' + (error.response.data.error || 'Неизвестная ошибка'));
+        } else if (error.request) {
+          alert('Ошибка соединения с сервером. Пожалуйста, проверьте ваше интернет-соединение.');
+        } else {
+          alert('Неизвестная ошибка: ' + error.message);
+        }
+      }
+    },
+
+    /**
+     * Получает список заказов с сервера.
+     */
+    async fetchOrders() {
+      this.isLoading = true;
+      try {
+        const response = await axios.get('http://localhost:8080/api/orders/admin', {
+          withCredentials: true,
+        });
+        console.log('Заказы получены:', response.data); // Логируем ответ с сервера
+        this.orders = response.data.orders || []; // Проверьте правильность структуры данных
+        this.extractUniqueServices();
+        this.calculateTotalPages();
+      } catch (error) {
+        console.error('Ошибка при загрузке заказов:', error);
+        alert('Не удалось загрузить заказы.');
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    /**
+     * Извлекает уникальные названия услуг из списка заказов.
+     */
+    extractUniqueServices() {
+      // Извлекаем уникальные услуги из списка заказов
+      const servicesSet = new Set();
+      this.orders.forEach(order => {
+        servicesSet.add(order.service);
+      });
+      this.uniqueServices = Array.from(servicesSet).map(serviceName => ({
+        name: serviceName
+      }));
+    },
+
+    /**
+     * Рассчитывает общее количество страниц для пагинации.
+     */
+    calculateTotalPages() {
+      this.totalPages = Math.ceil(this.sortedOrders.length / this.pageSize) || 1;
+      if (this.currentPage > this.totalPages) {
+        this.currentPage = this.totalPages;
+      }
+    },
+
+    // ... остальные методы для навигации и управления UI
+
+    /**
+     * Навигация на главную страницу администратора.
+     */
     goToAdminHome() {
       this.$router.push({ name: 'AdminHome' });
     },
+
+    /**
+     * Навигация на страницу управления сотрудниками.
+     */
     goToEmployeesPage() {
       this.$router.push({ name: 'ManageEmp' });
     },
+
+    /**
+     * Навигация на страницу управления материалами.
+     */
     goToMaterialsPage() {
       this.$router.push({ name: 'MaterialsOverview' });
     },
-    goToServicesPage() {
-      this.$router.push({ name: 'Services' });
-    },
+
+    /**
+     * Навигация на страницу бронирований.
+     */
     goToBookingsPage() {
       this.$router.push({ name: 'Bookings' });
     },
+
+    /**
+     * Навигация на страницу управления услугами.
+     */
+    goToServicesPage() {
+      this.$router.push({ name: 'Services' });
+    },
+
+    /**
+     * Навигация на страницу управления клиентами.
+     */
     goToClients(){
       this.$router.push({ name: 'Clients' })
     },
