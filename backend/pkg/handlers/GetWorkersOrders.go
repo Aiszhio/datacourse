@@ -7,75 +7,170 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
+	"log"
 	"strconv"
 	"time"
 )
 
-func WorkerOrdersApi(db *gorm.DB, client *redis.Client) fiber.Handler {
+type WorkerOrders struct {
+	OrderID     int       `json:"id" gorm:"column:order_id"`
+	ClientName  string    `json:"clientName" gorm:"column:client_name"`
+	ServiceName string    `json:"serviceName" gorm:"column:service_name"`
+	OrderDate   time.Time `json:"orderDate" gorm:"column:order_date"`
+	ReceiptDate time.Time `json:"receiptDate" gorm:"column:receipt_date"`
+}
+
+type WorkerOrderResponse struct {
+	OrderID         int       `json:"id"`
+	ClientName      string    `json:"clientName"`
+	ServiceName     string    `json:"serviceName"`
+	OrderDate       time.Time `json:"orderDate"`
+	AdjustedReceipt time.Time `json:"adjustedReceiptDate"`
+	RemainingTime   string    `json:"remainingTime,omitempty"`
+}
+
+type OrdersMapResponse struct {
+	PastOrders   []WorkerOrderResponse `json:"pastOrders"`
+	FutureOrders []WorkerOrderResponse `json:"futureOrders"`
+}
+
+func GetWorkerOrders(db *gorm.DB, client *redis.Client) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		var orders []WorkerOrders
+
 		userInfo, err := Redis.GetMultipleKey(client, "UserInfo")
 		if err != nil {
+			log.Printf("Ошибка при получении данных о пользователе: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to retrieve user info from Redis",
+				"error": "Ошибка при получении данных о пользователе",
 			})
 		}
 
-		var userID int
+		var employeeId int
 
 		switch v := userInfo["employee_id"].(type) {
 		case string:
-			userID, err = strconv.Atoi(v)
+			employeeId, err = strconv.Atoi(v)
 			if err != nil {
-				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-					"error": "Invalid employee_id format",
+				log.Printf("Ошибка форматирования employeeId: %v", err)
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": "Ошибка форматирования данных",
 				})
 			}
 		case int:
-			userID = v
+			employeeId = v
 		case float64:
-			userID = int(v)
+			employeeId = int(v)
 		default:
-			fmt.Println("Error in type assertion employee id")
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Invalid employee_id type",
-			})
-		}
-
-		var upcomingOrders []db2.BookingToOrder
-
-		loc, err := time.LoadLocation("Europe/Moscow")
-		if err != nil {
+			log.Printf("Ошибка приведения типов для employeeId: %v", v)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to load time location",
+				"error": "Ошибка приведения типов",
 			})
 		}
-		now := time.Now().In(loc)
 
-		err = db.Table("booking_to_orders").Where("employee_id = ?", userID).Find(&upcomingOrders).Error
-		if err != nil {
+		log.Printf("Получение заказов для employeeId: %d", employeeId)
+
+		if err = db.Table("orders").
+			Select("orders.order_id, clients.full_name as client_name, services.name as service_name, orders.order_date, orders.receipt_date").
+			Joins("JOIN clients ON orders.client_id = clients.client_id").
+			Joins("JOIN services ON orders.service_name = services.name").
+			Where("orders.employee_id = ? AND orders.service_name IS NOT NULL AND orders.service_name <> ''", employeeId).
+			Scan(&orders).Error; err != nil {
+			log.Printf("Ошибка при выполнении запроса к базе данных: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to retrieve upcoming orders",
+				"error": "Ошибка при получении заказов",
 			})
 		}
 
-		var expiredOrdersWithNames []OrdersWithNames
+		log.Printf("Получено заказов: %d", len(orders))
 
-		err = db.Table("orders").
-			Select("orders.order_id as order_id, clients.full_name as client_name,"+
-				" employees.full_name as employee_name, orders.service_name as service_name, orders.order_date, orders.receipt_date").
-			Joins("JOIN clients ON clients.client_id = orders.client_id").
-			Joins("JOIN employees ON employees.employee_id = orders.employee_id").
-			Where("orders.employee_id = ?", userID).Where("orders.order_date < ?", now).
-			Find(&expiredOrdersWithNames).Error
+		for _, order := range orders {
+			log.Printf("Заказ ID: %d, ClientName: '%s', ServiceName: '%s', OrderDate: %s, ReceiptDate: %s",
+				order.OrderID, order.ClientName, order.ServiceName, order.OrderDate.Format(time.RFC3339), order.ReceiptDate.Format(time.RFC3339))
+		}
+
+		ordersMap, err := GetOrders(db, orders)
 		if err != nil {
+			log.Printf("Ошибка при разделении заказов: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to retrieve expired orders with names",
+				"error": err.Error(),
 			})
 		}
+
+		log.Printf("Прошедших заказов: %d, Будущих заказов: %d", len(ordersMap.PastOrders), len(ordersMap.FutureOrders))
 
 		return c.JSON(fiber.Map{
-			"upcoming": upcomingOrders,
-			"expired":  expiredOrdersWithNames,
+			"message": "Заказы успешно загружены",
+			"orders":  ordersMap,
 		})
 	}
+}
+
+func GetOrders(db *gorm.DB, orders []WorkerOrders) (OrdersMapResponse, error) {
+	pastOrders := make([]WorkerOrderResponse, 0)
+	futureOrders := make([]WorkerOrderResponse, 0)
+	now := time.Now()
+
+	serviceNames := make([]string, 0, len(orders))
+	for _, order := range orders {
+		serviceNames = append(serviceNames, order.ServiceName)
+	}
+
+	var services []db2.Service
+	if err := db.Table("services").Where("name IN ?", serviceNames).Find(&services).Error; err != nil {
+		return OrdersMapResponse{}, fmt.Errorf("ошибка при получении данных об услугах: %w", err)
+	}
+
+	serviceMap := make(map[string]db2.Service)
+	for _, service := range services {
+		serviceMap[service.Name] = service
+	}
+
+	for _, order := range orders {
+		service, exists := serviceMap[order.ServiceName]
+		if !exists {
+			log.Printf("Услуга '%s' для заказа ID %d не найдена", order.ServiceName, order.OrderID)
+			continue
+		}
+
+		adjustedReceiptDate := order.ReceiptDate.AddDate(0, 0, service.Days)
+		log.Printf("Заказ ID %d: adjustedReceiptDate = %s", order.OrderID, adjustedReceiptDate.Format(time.RFC3339))
+
+		remainingTime := adjustedReceiptDate.AddDate(0, 0, service.Days).Format(time.RFC3339)
+
+		parsedRemainingTime, err := time.Parse(time.RFC3339, remainingTime)
+		if err != nil {
+			log.Printf("Ошибка парсинга remainingTime для заказа ID %d: %v", order.OrderID, err)
+			continue
+		}
+
+		if parsedRemainingTime.Before(now) {
+			pastOrders = append(pastOrders, WorkerOrderResponse{
+				OrderID:         order.OrderID,
+				ClientName:      order.ClientName,
+				ServiceName:     order.ServiceName,
+				OrderDate:       order.OrderDate,
+				AdjustedReceipt: adjustedReceiptDate,
+				RemainingTime:   remainingTime,
+			})
+			log.Printf("Заказ ID %d классифицирован как прошедший, RemainingTime = %s", order.OrderID, remainingTime)
+		} else {
+			futureOrders = append(futureOrders, WorkerOrderResponse{
+				OrderID:         order.OrderID,
+				ClientName:      order.ClientName,
+				ServiceName:     order.ServiceName,
+				OrderDate:       order.OrderDate,
+				AdjustedReceipt: adjustedReceiptDate,
+				RemainingTime:   remainingTime,
+			})
+			log.Printf("Заказ ID %d классифицирован как будущий, RemainingTime = %s", order.OrderID, remainingTime)
+		}
+	}
+
+	log.Printf("Прошедших заказов: %d, Будущих заказов: %d", len(pastOrders), len(futureOrders))
+
+	return OrdersMapResponse{
+		PastOrders:   pastOrders,
+		FutureOrders: futureOrders,
+	}, nil
 }

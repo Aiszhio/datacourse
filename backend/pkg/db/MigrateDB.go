@@ -26,7 +26,6 @@ func MigrateDB() error {
 		&Equipment{},
 		&ServiceRequirement{},
 		&OrderContent{},
-		&BookingToOrder{},
 	); err != nil {
 		return fmt.Errorf("migration failed: %w", err)
 	}
@@ -76,10 +75,6 @@ func InsertUniqueDB(db *gorm.DB) error {
 	}
 
 	if err := insertOrderContents(db); err != nil {
-		return err
-	}
-
-	if err := insertBookingToOrders(db); err != nil {
 		return err
 	}
 
@@ -236,20 +231,6 @@ func insertOrderContents(db *gorm.DB) error {
 
 		if err := db.FirstOrCreate(&oc, OrderContent{OrderID: oc.OrderID, ServiceID: oc.ServiceID}).Error; err != nil {
 			return fmtError("OrderContent", err)
-		}
-	}
-	return nil
-}
-
-func insertBookingToOrders(db *gorm.DB) error {
-	for _, bto := range BookingToOrders {
-		if bto.BookingID == 0 || bto.EmployeeID == 0 || bto.ClientID == 0 {
-			log.Println("Пропуск BookingToOrder с пустыми полями")
-			continue
-		}
-
-		if err := db.FirstOrCreate(&bto, BookingToOrder{ID: bto.ID}).Error; err != nil {
-			return fmtError("BookingToOrder", err)
 		}
 	}
 	return nil

@@ -47,7 +47,7 @@ func main() {
 	webApp.Get("/api/user", handlers.GetUserName(rdb))
 	webApp.Get("/api/orders", handlers.ClientOrdersApi(dbu, rdb))
 	webApp.Get("/api/bookings", handlers.GetBookings(dbu, rdb))
-	webApp.Get("/api/orders/worker", handlers.WorkerOrdersApi(dbu, rdb))
+	webApp.Get("/api/orders/worker", handlers.GetWorkerOrders(dbu, rdb))
 	webApp.Get("/api/services", handlers.GetServices(dbu))
 	webApp.Post("/api/createOrder", handlers.CreateBooking(dbu, rdb))
 	webApp.Get("/api/employees", handlers.GetEmployees(dbu))

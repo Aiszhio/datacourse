@@ -25,13 +25,6 @@ func DeleteAdminBooking(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		if err := tx.Where("booking_id = ?", bookingID).Delete(&db2.BookingToOrder{}).Error; err != nil {
-			tx.Rollback()
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": err,
-			})
-		}
-
 		if err := tx.Commit().Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": err,

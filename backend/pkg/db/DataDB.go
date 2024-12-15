@@ -35,6 +35,7 @@ type Service struct {
 	ServiceID int     `gorm:"column:service_id;primaryKey;autoIncrement" json:"service_id"`
 	Price     float64 `gorm:"column:price;not null" json:"price"`
 	Name      string  `gorm:"column:name" json:"name"`
+	Days      int     `gorm:"column:days" json:"days"`
 }
 
 type Booking struct {
@@ -85,15 +86,6 @@ type OrderContent struct {
 	ServiceID int `gorm:"column:service_id;primaryKey"`
 }
 
-type BookingToOrder struct {
-	ID         int       `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
-	BookingID  int       `gorm:"column:booking_id;not null" json:"booking_id"`
-	EmployeeID int       `gorm:"column:employee_id;not null" json:"employee_id"`
-	ClientID   int       `gorm:"column:client_id;not null" json:"client_id"`
-	OrderDate  time.Time `gorm:"column:order_date;not null" json:"orderDate"`
-	OrderEnd   time.Time `gorm:"column:order_end;not null" json:"orderEnd"`
-}
-
 var Services = []Service{}
 
 var Materials = []Material{}
@@ -115,5 +107,3 @@ var MaterialExpenditures = []MaterialExpenditure{}
 var MaterialPurchases = []MaterialPurchase{}
 
 var OrderContents = []OrderContent{}
-
-var BookingToOrders = []BookingToOrder{}
