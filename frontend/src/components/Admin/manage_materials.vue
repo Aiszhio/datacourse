@@ -146,7 +146,7 @@
           </option>
         </select>
 
-        <!-- Поле для ввода поставщика -->
+        <!-- Поле для ввода поставщика (обязательное) -->
         <label for="purchaseSupplier">Поставщик</label>
         <input
             id="purchaseSupplier"
@@ -189,7 +189,7 @@
           <span class="unit">руб</span>
         </div>
 
-        <!-- Поле для ввода даты поставки -->
+        <!-- Поле для ввода даты поставки (текущее время, без будущего) -->
         <label for="supplyDate">Дата поставки</label>
         <input
             id="supplyDate"
@@ -325,7 +325,8 @@ export default {
       this.showExpenditureModal = true;
       this.currentExpenditure = {
         material_id: '',
-        expenditure_date: '',
+        // Устанавливаем текущую дату и время по умолчанию
+        expenditure_date: this.todayDate,
         quantity: '',
       };
     },
@@ -341,7 +342,8 @@ export default {
         supplier: '',
         quantity: '',
         cost: '',
-        supply_date: '',
+        // Устанавливаем текущую дату и время по умолчанию
+        supply_date: this.todayDate,
       };
     },
 

@@ -15,9 +15,9 @@ func SetWorker(db *gorm.DB, orderStart time.Time) (int, error) {
 	orderEnd := orderStart.Add(time.Hour)
 
 	err = db.Table("orders").
-		Select("distinct booking_to_orders.employee_id").
-		Joins("LEFT JOIN employees ON booking_to_orders.employee_id = employees.employee_id").
-		Where("booking_to_orders.order_date < ? AND booking_to_orders.order_end > ?", orderEnd, orderStart).
+		Select("distinct orders.employee_id").
+		Joins("LEFT JOIN employees ON orders.employee_id = employees.employee_id").
+		Where("orders.order_date < ? AND orders.receipt_date > ?", orderEnd, orderStart).
 		Where("employees.position = ?", "Фотограф").
 		Pluck("booking_to_orders.employee_id", &busyWorkerIDs).Error
 	if err != nil {

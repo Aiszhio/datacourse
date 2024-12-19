@@ -63,6 +63,7 @@
                 {{ sortOrders.email === 'asc' ? '▲' : '▼' }}
               </span>
           </th>
+          <th>Действия</th>
         </tr>
         </thead>
         <tbody>
@@ -70,6 +71,10 @@
           <td>{{ client.FullName }}</td>
           <td>{{ formatPhone(client.PhoneNumber) }}</td>
           <td>{{ client.Email }}</td>
+          <td>
+            <button @click="openEditClientModal(client)" class="btn edit">Редактировать</button>
+            <button @click="confirmDeleteClient(client)" class="btn delete">Удалить</button>
+          </td>
         </tr>
         </tbody>
       </table>
@@ -129,7 +134,7 @@
     </div>
 
     <!-- Модальное окно для создания клиента -->
-    <div v-if="showCreateClientModal" class="modal-overlay">
+    <div v-if="showCreateClientModal" class="modal-overlay" @click.self="closeCreateClientModal">
       <div class="modal">
         <h3>Создать клиента</h3>
         <form @submit.prevent="createClient">
@@ -171,6 +176,62 @@
         </form>
       </div>
     </div>
+
+    <!-- Модальное окно для редактирования клиента -->
+    <div v-if="showEditClientModal" class="modal-overlay" @click.self="closeEditClientModal">
+      <div class="modal">
+        <h3>Редактировать клиента</h3>
+        <form @submit.prevent="updateClient">
+          <label>
+            ФИО:
+            <input
+                type="text"
+                v-model="editClient.FullName"
+                placeholder="Введите ФИО"
+                required
+                maxlength="80"
+            />
+          </label>
+          <label>
+            Номер телефона:
+            <input
+                type="text"
+                v-model="editClient.PhoneNumber"
+                placeholder="Введите номер телефона"
+                required
+                maxlength="11"
+                @input="formatPhoneInputEdit"
+            />
+          </label>
+          <label>
+            Почта:
+            <input
+                type="email"
+                v-model="editClient.Email"
+                placeholder="Введите почту"
+                required
+                maxlength="100"
+            />
+          </label>
+          <div class="modal-actions">
+            <button type="submit" class="btn save">Сохранить</button>
+            <button type="button" @click="closeEditClientModal" class="btn cancel">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Модальное окно подтверждения удаления клиента -->
+    <div v-if="showDeleteConfirmModal" class="modal-overlay" @click.self="closeDeleteConfirmModal">
+      <div class="modal">
+        <h3>Подтверждение удаления</h3>
+        <p>Вы уверены, что хотите удалить клиента <strong>{{ deleteClient.FullName }}</strong>?</p>
+        <div class="modal-actions">
+          <button @click="deleteClientConfirmed" class="btn delete">Удалить</button>
+          <button @click="closeDeleteConfirmModal" class="btn cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -183,11 +244,20 @@ export default {
     return {
       clients: [],
       showCreateClientModal: false,
+      showEditClientModal: false,
+      showDeleteConfirmModal: false,
       newClient: {
         FullName: '',
         PhoneNumber: '',
         Email: ''
       },
+      editClient: {
+        id: null,
+        FullName: '',
+        PhoneNumber: '',
+        Email: ''
+      },
+      deleteClient: {},
       sortOrders: {
         FullName: 'asc',
         phone: 'asc',
@@ -228,8 +298,8 @@ export default {
         let bVal = b[this.currentSortKey];
 
         if (this.currentSortKey === 'phone') {
-          aVal = Number(aVal);
-          bVal = Number(bVal);
+          aVal = aVal.toString();
+          bVal = bVal.toString();
         } else {
           aVal = aVal.toString().toLowerCase();
           bVal = bVal.toString().toLowerCase();
@@ -274,6 +344,14 @@ export default {
       }
       this.newClient.PhoneNumber = phone;
     },
+    formatPhoneInputEdit() {
+      let phone = this.editClient.PhoneNumber.replace(/\D/g, '');
+      phone = phone.substring(0, 11);
+      if (phone.length > 0 && phone[0] !== '7') {
+        phone = '7' + phone.substring(1);
+      }
+      this.editClient.PhoneNumber = phone;
+    },
     formatPhone(phone) {
       if (!phone) return phone;
       if (phone.length === 11) {
@@ -313,6 +391,68 @@ export default {
         }
       }
     },
+    async openEditClientModal(client) {
+      this.editClient = { ...client };
+      this.showEditClientModal = true;
+    },
+    async updateClient() {
+      if (!/^7\d{10}$/.test(this.editClient.PhoneNumber)) {
+        alert('Номер телефона должен начинаться с 7 и содержать 11 цифр.');
+        return;
+      }
+
+      try {
+        const clientData = {
+          FullName: this.editClient.FullName,
+          PhoneNumber: this.editClient.PhoneNumber,
+          Email: this.editClient.Email
+        };
+        const response = await axios.put(`http://localhost:8080/api/admin/clients/${this.editClient.id}`, clientData, {
+          withCredentials: true
+        });
+
+        if (response.data.message) {
+          alert(response.data.message);
+          this.closeEditClientModal();
+          this.fetchClients();
+        } else if (response.data.error) {
+          alert(response.data.error);
+        }
+      } catch (error) {
+        console.error('Ошибка при обновлении клиента:', error);
+        if (error.response && error.response.data) {
+          alert(error.response.data.error || error.response.data.message || 'Неизвестная ошибка.');
+        } else {
+          alert('Не удалось обновить клиента.');
+        }
+      }
+    },
+    confirmDeleteClient(client) {
+      this.deleteClient = client;
+      this.showDeleteConfirmModal = true;
+    },
+    async deleteClientConfirmed() {
+      try {
+        const response = await axios.delete(`http://localhost:8080/api/admin/clients/${this.deleteClient.id}`, {
+          withCredentials: true
+        });
+
+        if (response.data.message) {
+          alert(response.data.message);
+          this.closeDeleteConfirmModal();
+          this.fetchClients();
+        } else if (response.data.error) {
+          alert(response.data.error);
+        }
+      } catch (error) {
+        console.error('Ошибка при удалении клиента:', error);
+        if (error.response && error.response.data) {
+          alert(error.response.data.error || error.response.data.message || 'Неизвестная ошибка.');
+        } else {
+          alert('Не удалось удалить клиента.');
+        }
+      }
+    },
     sortBy(key) {
       if (this.currentSortKey === key) {
         this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
@@ -321,6 +461,7 @@ export default {
         this.sortOrders[key] = 'asc';
       }
       this.currentPage = 1;
+      this.calculateTotalPages();
     },
     resetFilters() {
       this.filters = {
@@ -329,6 +470,7 @@ export default {
         email: ''
       };
       this.currentPage = 1;
+      this.calculateTotalPages();
     },
     calculateTotalPages() {
       this.totalPages = Math.ceil(this.sortedClients.length / this.pageSize) || 1;
@@ -361,6 +503,19 @@ export default {
         PhoneNumber: '',
         Email: ''
       };
+    },
+    closeEditClientModal() {
+      this.showEditClientModal = false;
+      this.editClient = {
+        id: null,
+        FullName: '',
+        PhoneNumber: '',
+        Email: ''
+      };
+    },
+    closeDeleteConfirmModal() {
+      this.showDeleteConfirmModal = false;
+      this.deleteClient = {};
     },
     goToAdminHome() {
       this.$router.push({ name: 'AdminHome' });
@@ -509,6 +664,16 @@ h2 {
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.3s;
+}
+
+.btn.edit {
+  background-color: #2196F3; /* Синий цвет для кнопки редактирования */
+  color: white;
+  margin-right: 5px;
+}
+
+.btn.edit:hover {
+  background-color: #1976D2;
 }
 
 .btn.delete {

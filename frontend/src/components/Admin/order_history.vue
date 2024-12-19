@@ -36,32 +36,39 @@
           <th @click="sortBy('clientName')">
             Имя клиента
             <span v-if="currentSortKey === 'clientName'">
-                {{ sortOrders.clientName === 'asc' ? '▲' : '▼' }}
-              </span>
+              {{ sortOrders.clientName === 'asc' ? '▲' : '▼' }}
+            </span>
+          </th>
+          <th @click="sortBy('employeeName')">
+            Сотрудник
+            <span v-if="currentSortKey === 'employeeName'">
+              {{ sortOrders.employeeName === 'asc' ? '▲' : '▼' }}
+            </span>
           </th>
           <th @click="sortBy('service')">
             Название услуги
             <span v-if="currentSortKey === 'service'">
-                {{ sortOrders.service === 'asc' ? '▲' : '▼' }}
-              </span>
+              {{ sortOrders.service === 'asc' ? '▲' : '▼' }}
+            </span>
           </th>
           <th @click="sortBy('orderDate')">
             Дата оформления
             <span v-if="currentSortKey === 'orderDate'">
-                {{ sortOrders.orderDate === 'asc' ? '▲' : '▼' }}
-              </span>
+              {{ sortOrders.orderDate === 'asc' ? '▲' : '▼' }}
+            </span>
           </th>
           <th @click="sortBy('receiveDate')">
-            Дата получения
+            Дата завершения
             <span v-if="currentSortKey === 'receiveDate'">
-                {{ sortOrders.receiveDate === 'asc' ? '▲' : '▼' }}
-              </span>
+              {{ sortOrders.receiveDate === 'asc' ? '▲' : '▼' }}
+            </span>
           </th>
         </tr>
         </thead>
         <tbody>
         <tr v-for="order in paginatedOrders" :key="order.id">
           <td>{{ order.clientName }}</td>
+          <td>{{ order.employeeName }}</td>
           <td>{{ order.service }}</td>
           <td>{{ formatDateTime(order.orderDate) }}</td>
           <td>{{ formatDateTime(order.receiveDate) }}</td>
@@ -71,12 +78,12 @@
     </div>
 
     <!-- Индикатор загрузки -->
-    <div v-else class="loading">
+    <div v-else>
       Загрузка заказов...
     </div>
 
     <!-- Пагинация -->
-    <div class="pagination" v-if="totalPages > 1 && !isLoading">
+    <div v-if="totalPages > 1 && !isLoading">
       <button
           @click="prevPage"
           :disabled="currentPage === 1"
@@ -129,11 +136,13 @@
         <h3>{{ isEditing ? modalTitle : 'Добавить заказ' }}</h3>
         <form @submit.prevent="isEditing ? submitEdit() : submitAdd()">
           <label>
-            Имя клиента:
-            <input v-model="currentItem.clientName" required />
+            Номер телефона:
+            <input
+                v-model="currentItem.phoneNumber"
+                required
+            />
           </label>
 
-          <!-- Ручной ввод для названия услуги -->
           <label>
             Название услуги:
             <input v-model="currentItem.service" placeholder="Введите название услуги" maxlength="40" required />
@@ -149,7 +158,7 @@
             />
           </label>
 
-          <div class="modal-actions">
+          <div>
             <button type="submit" class="btn save">Сохранить</button>
             <button type="button" @click="closeModal" class="btn cancel">Отмена</button>
           </div>
@@ -167,9 +176,10 @@ export default {
   data() {
     return {
       orders: [],
-      uniqueServices: [],  // Список уникальных услуг
+      uniqueServices: [],
       sortOrders: {
         clientName: 'asc',
+        employeeName: 'asc',
         service: 'asc',
         orderDate: 'asc',
         receiveDate: 'asc',
@@ -183,7 +193,6 @@ export default {
       modalTitle: '',
       currentItem: {},
       isEditing: false,
-      // Фильтры
       searchClientName: '',
       searchService: '',
     };
@@ -191,9 +200,8 @@ export default {
   computed: {
     filteredOrders() {
       return this.orders.filter(order => {
-        // Добавьте проверку на наличие clientName и service
         if (!order.clientName || !order.service) {
-          return false; // Если данных нет, не показывать заказ
+          return false;
         }
 
         const matchesClientName = order.clientName
@@ -210,13 +218,10 @@ export default {
         return this.filteredOrders;
       }
       return [...this.filteredOrders].sort((a, b) => {
-        let aVal = a[this.currentSortKey] !== undefined && a[this.currentSortKey] !== null ? a[this.currentSortKey] : '';
-        let bVal = b[this.currentSortKey] !== undefined && b[this.currentSortKey] !== null ? b[this.currentSortKey] : '';
+        let aVal = a[this.currentSortKey] ?? '';
+        let bVal = b[this.currentSortKey] ?? '';
 
-        if (this.currentSortKey === 'id') {
-          aVal = Number(aVal);
-          bVal = Number(bVal);
-        } else if (this.currentSortKey === 'orderDate' || this.currentSortKey === 'receiveDate') {
+        if (this.currentSortKey === 'orderDate' || this.currentSortKey === 'receiveDate') {
           aVal = new Date(aVal);
           bVal = new Date(bVal);
         } else {
@@ -236,11 +241,6 @@ export default {
     },
   },
   methods: {
-    /**
-     * Преобразует дату в строку формата ISO 8601 с московским смещением (+03:00).
-     * @param {Date} date - Исходная дата.
-     * @returns {string} - Форматированная строка даты.
-     */
     toMoscowTimeISOString(date) {
       const options = {
         timeZone: 'Europe/Moscow',
@@ -263,14 +263,8 @@ export default {
       return `${dateParts.year}-${dateParts.month}-${dateParts.day}T${dateParts.hour}:${dateParts.minute}:${dateParts.second}+03:00`;
     },
 
-    /**
-     * Форматирует дату для отображения в интерфейсе в московском времени.
-     * @param {string} dateString - Исходная строка даты.
-     * @returns {string} - Отформатированная строка даты.
-     */
     formatDateTime(dateString) {
       const date = new Date(dateString);
-      // Преобразуем в МСК, добавляем временную зону
       const moscowTime = date.toLocaleString('ru-RU', {
         timeZone: 'Europe/Moscow',
         year: 'numeric',
@@ -285,10 +279,6 @@ export default {
       return moscowTime;
     },
 
-    /**
-     * Получает текущую дату и время в формате, подходящем для input[type="datetime-local"].
-     * @returns {string} - Строка даты и времени в формате "YYYY-MM-DDTHH:mm:00".
-     */
     getCurrentDateTime() {
       const now = new Date();
       const year = now.getFullYear();
@@ -296,16 +286,13 @@ export default {
       const day = String(now.getDate()).padStart(2, '0');
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
-      return `${year}-${month}-${day}T${hours}:${minutes}:00`;  // Формат для datetime-local
+      return `${year}-${month}-${day}T${hours}:${minutes}:00`;
     },
 
-    /**
-     * Открывает модальное окно для добавления нового заказа.
-     */
     openAddModal() {
       this.modalTitle = 'Добавить заказ';
       this.currentItem = {
-        clientName: '',
+        phoneNumber: '',
         service: '',
         orderDate: this.getCurrentDateTime(),
       };
@@ -313,32 +300,20 @@ export default {
       this.showModal = true;
     },
 
-    /**
-     * Закрывает модальное окно и сбрасывает текущие данные.
-     */
     closeModal() {
       this.showModal = false;
       this.currentItem = {};
       this.isEditing = false;
     },
 
-    /**
-     * Отправляет запрос на добавление нового заказа.
-     */
     async submitAdd() {
       try {
-        // Преобразуем выбранную дату в московское время
         const moscowOrderDate = this.toMoscowTimeISOString(new Date(this.currentItem.orderDate));
-
-        // Формируем объект нового заказа
         const newOrder = {
-          clientName: this.currentItem.clientName,
+          phoneNumber: this.currentItem.phoneNumber,
           service: this.currentItem.service,
-          orderDate: moscowOrderDate, // Время в МСК
+          orderDate: moscowOrderDate,
         };
-
-        // Логирование данных перед отправкой
-        console.log('Отправляемые данные на сервер:', JSON.stringify(newOrder));
 
         const response = await axios.post('http://localhost:8080/api/orders/admin', newOrder, {
           withCredentials: true,
@@ -366,43 +341,28 @@ export default {
       }
     },
 
-    /**
-     * Сортирует заказы по заданному ключу.
-     * @param {string} key - Ключ для сортировки.
-     */
     sortBy(key) {
       if (this.currentSortKey === key) {
         this.sortOrders[key] = this.sortOrders[key] === 'asc' ? 'desc' : 'asc';
       } else {
         this.currentSortKey = key;
-        // Устанавливаем начальный порядок сортировки для нового ключа
         this.sortOrders[key] = 'asc';
       }
       this.calculateTotalPages();
     },
 
-    /**
-     * Переходит на следующую страницу пагинации.
-     */
     nextPage() {
       if (this.currentPage < this.totalPages) {
         this.currentPage += 1;
       }
     },
 
-    /**
-     * Возвращается на предыдущую страницу пагинации.
-     */
     prevPage() {
       if (this.currentPage > 1) {
         this.currentPage -= 1;
       }
     },
 
-    /**
-     * Открывает модальное окно для редактирования заказа.
-     * @param {object} order - Заказ для редактирования.
-     */
     openEditModal(order) {
       this.modalTitle = 'Редактировать заказ';
       this.currentItem = { ...order };
@@ -410,23 +370,14 @@ export default {
       this.showModal = true;
     },
 
-    /**
-     * Отправляет запрос на редактирование существующего заказа.
-     */
     async submitEdit() {
       try {
-        // Преобразуем выбранную дату в московское время
         const moscowOrderDate = this.toMoscowTimeISOString(new Date(this.currentItem.orderDate));
-
-        // Формируем объект обновлённого заказа
         const updatedOrder = {
           clientName: this.currentItem.clientName,
           service: this.currentItem.service,
-          orderDate: moscowOrderDate, // Время в МСК
+          orderDate: moscowOrderDate,
         };
-
-        // Логирование данных перед отправкой
-        console.log('Отправляемые данные на сервер для редактирования:', JSON.stringify(updatedOrder));
 
         const response = await axios.put(`http://localhost:8080/api/orders/${this.currentItem.id}`, updatedOrder, {
           withCredentials: true,
@@ -457,17 +408,13 @@ export default {
       }
     },
 
-    /**
-     * Получает список заказов с сервера.
-     */
     async fetchOrders() {
       this.isLoading = true;
       try {
         const response = await axios.get('http://localhost:8080/api/orders/admin', {
           withCredentials: true,
         });
-        console.log('Заказы получены:', response.data); // Логируем ответ с сервера
-        this.orders = response.data.orders || []; // Проверьте правильность структуры данных
+        this.orders = response.data.orders || [];
         this.extractUniqueServices();
         this.calculateTotalPages();
       } catch (error) {
@@ -478,11 +425,7 @@ export default {
       }
     },
 
-    /**
-     * Извлекает уникальные названия услуг из списка заказов.
-     */
     extractUniqueServices() {
-      // Извлекаем уникальные услуги из списка заказов
       const servicesSet = new Set();
       this.orders.forEach(order => {
         servicesSet.add(order.service);
@@ -492,9 +435,6 @@ export default {
       }));
     },
 
-    /**
-     * Рассчитывает общее количество страниц для пагинации.
-     */
     calculateTotalPages() {
       this.totalPages = Math.ceil(this.sortedOrders.length / this.pageSize) || 1;
       if (this.currentPage > this.totalPages) {
@@ -502,52 +442,54 @@ export default {
       }
     },
 
-    // ... остальные методы для навигации и управления UI
-
-    /**
-     * Навигация на главную страницу администратора.
-     */
     goToAdminHome() {
       this.$router.push({ name: 'AdminHome' });
     },
-
-    /**
-     * Навигация на страницу управления сотрудниками.
-     */
     goToEmployeesPage() {
       this.$router.push({ name: 'ManageEmp' });
     },
-
-    /**
-     * Навигация на страницу управления материалами.
-     */
     goToMaterialsPage() {
       this.$router.push({ name: 'MaterialsOverview' });
     },
-
-    /**
-     * Навигация на страницу бронирований.
-     */
     goToBookingsPage() {
       this.$router.push({ name: 'Bookings' });
     },
-
-    /**
-     * Навигация на страницу управления услугами.
-     */
     goToServicesPage() {
       this.$router.push({ name: 'Services' });
     },
-
-    /**
-     * Навигация на страницу управления клиентами.
-     */
-    goToClients(){
-      this.$router.push({ name: 'Clients' })
+    goToClients() {
+      this.$router.push({ name: 'Clients' });
     },
   },
   watch: {
-    // Обновляем пагинацию при изменении фильтров
+    'currentItem.phoneNumber'(val) {
+      // Если значение пустое или undefined, просто выходим
+      if (!val) return;
+
+      let digits = val.replace(/\D/g, '');
+      if (!digits.startsWith('7')) {
+        digits = '7' + digits.replace(/^7+/, '');
+      }
+
+      if (digits.length > 1) {
+        digits = digits[0] + '(' + digits.slice(1);
+      }
+      if (digits.length > 4) {
+        digits = digits.slice(0,5) + ')-' + digits.slice(5);
+      }
+      if (digits.length > 9) {
+        digits = digits.slice(0,10) + '-' + digits.slice(10);
+      }
+      if (digits.length > 12) {
+        digits = digits.slice(0,13) + '-' + digits.slice(13);
+      }
+      if (digits.length > 15) {
+        digits = digits.slice(0,16);
+      }
+
+      this.currentItem.phoneNumber = digits;
+    },
+
     searchClientName() {
       this.currentPage = 1;
       this.calculateTotalPages();

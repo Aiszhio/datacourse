@@ -72,8 +72,10 @@ func main() {
 	webApp.Put("/api/equipment/:equipment_id", handlers.UpdateEquipment(dbu))
 	webApp.Get("/api/admin/clients", handlers.GetClients(dbu))
 	webApp.Post("/api/admin/clients", handlers.AddClient(dbu))
-	webApp.Delete("api/equipment/:equipmentID", handlers.DeleteEquipment(dbu))
-	webApp.Delete("api/services/:service_id", handlers.DeleteService(dbu))
+	webApp.Delete("/api/equipment/:equipmentID", handlers.DeleteEquipment(dbu))
+	webApp.Delete("/api/services/:service_id", handlers.DeleteService(dbu))
+	webApp.Put("/api/admin/clients/:id", handlers.PutClient(dbu))
+	webApp.Delete("/api/admin/clients/:id", handlers.DeleteClient(dbu))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))

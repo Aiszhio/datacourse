@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	"github.com/Aiszhio/datacourse.git/pkg/utils"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"time"
@@ -24,16 +24,11 @@ func AddExpenditure(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		loc, err := time.LoadLocation("Europe/Moscow")
-		if err != nil {
-			fmt.Println("error loading location:", err)
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Ошибка загрузки временной зоны",
+		if err := utils.CheckWorkingHours(expenditure.ExpenditureDate); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": err.Error(),
 			})
 		}
-
-		parsedTime := expenditure.ExpenditureDate.In(loc)
-		expenditure.ExpenditureDate = parsedTime
 
 		tx := db.Begin()
 
@@ -44,7 +39,7 @@ func AddExpenditure(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		if err = tx.Table("material_expenditures").Create(&expenditure).Error; err != nil {
+		if err := tx.Table("material_expenditures").Create(&expenditure).Error; err != nil {
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Ошибка создания траты",
@@ -52,7 +47,7 @@ func AddExpenditure(db *gorm.DB) fiber.Handler {
 		}
 
 		var existingQuantity int
-		if err = tx.Table("materials").Select("quantity").Where("material_id = ?", expenditure.MaterialID).Scan(&existingQuantity).Error; err != nil {
+		if err := tx.Table("materials").Select("quantity").Where("material_id = ?", expenditure.MaterialID).Scan(&existingQuantity).Error; err != nil {
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Ошибка при просмотре таблицы материалов",
@@ -67,7 +62,7 @@ func AddExpenditure(db *gorm.DB) fiber.Handler {
 		}
 
 		newQuantity := existingQuantity - expenditure.Quantity
-		if err = tx.Table("materials").Where("material_id = ?", expenditure.MaterialID).Update("quantity", newQuantity).Error; err != nil {
+		if err := tx.Table("materials").Where("material_id = ?", expenditure.MaterialID).Update("quantity", newQuantity).Error; err != nil {
 			tx.Rollback()
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Ошибка при обновлении таблицы материалов",

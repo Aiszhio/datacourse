@@ -3,13 +3,16 @@ package handlers
 import (
 	"fmt"
 	db2 "github.com/Aiszhio/datacourse.git/pkg/db"
+	"github.com/Aiszhio/datacourse.git/pkg/utils"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"regexp"
+	"strings"
 	"time"
 )
 
 type ClientOrder struct {
-	ClientName  string    `json:"clientName"`
+	ClientPhone string    `json:"phoneNumber"`
 	ServiceName string    `json:"service"`
 	OrderDate   time.Time `json:"orderDate"`
 }
@@ -26,15 +29,27 @@ func AddOrder(db *gorm.DB) fiber.Handler {
 			})
 		}
 
+		digits := regexp.MustCompile(`\D`).ReplaceAllString(clientOrder.ClientPhone, "")
+		if !strings.HasPrefix(digits, "7") {
+			digits = "7" + strings.TrimLeft(digits, "7")
+		}
+		clientOrder.ClientPhone = digits
+
 		order.ServiceName = clientOrder.ServiceName
 		order.OrderDate = clientOrder.OrderDate
 		order.ReceiptDate = clientOrder.OrderDate.Add(time.Hour)
 
+		if err := utils.CheckWorkingHours(order.OrderDate); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		}
+
 		var client db2.Client
-		if err := db.Table("clients").Where("full_name = ?", clientOrder.ClientName).First(&client).Error; err != nil {
+		if err := db.Table("clients").Where("phone_number = ?", clientOrder.ClientPhone).First(&client).Error; err != nil {
 			fmt.Println("Ошибка поиска клиента:", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Пользователь с таким ФИО не найден",
+				"error": "Пользователь с таким номером телефона не найден",
 			})
 		}
 		order.ClientID = client.ClientID

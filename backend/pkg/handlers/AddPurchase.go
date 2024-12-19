@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	db2 "github.com/Aiszhio/datacourse.git/pkg/db"
+	"github.com/Aiszhio/datacourse.git/pkg/utils"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"time"
@@ -28,17 +29,17 @@ func AddPurchase(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		loc, err := time.LoadLocation("Europe/Moscow")
-		if err != nil {
-			fmt.Println("error loading location:", err)
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Ошибка загрузки временной зоны",
+		if err := utils.CheckWorkingHours(purchaseItem.SupplyDate); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": err.Error(),
 			})
 		}
 
-		parsedTime := purchaseItem.SupplyDate.In(loc)
-
-		purchaseItem.SupplyDate = parsedTime
+		if purchaseItem.Supplier == "" {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Поле поставщика обязательно",
+			})
+		}
 
 		tx := db.Begin()
 		if tx.Error != nil {
@@ -48,7 +49,7 @@ func AddPurchase(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		if err = tx.Table("material_purchases").Create(&purchaseItem).Error; err != nil {
+		if err := tx.Table("material_purchases").Create(&purchaseItem).Error; err != nil {
 			fmt.Println("error", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "Не удалось совершить покупку",
@@ -56,7 +57,7 @@ func AddPurchase(db *gorm.DB) fiber.Handler {
 		}
 
 		var purchase db2.Material
-		if err = tx.Table("materials").Where("material_id = ?", purchaseItem.MaterialID).First(&purchase).Error; err != nil {
+		if err := tx.Table("materials").Where("material_id = ?", purchaseItem.MaterialID).First(&purchase).Error; err != nil {
 			tx.Rollback()
 			fmt.Println("error", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -65,7 +66,7 @@ func AddPurchase(db *gorm.DB) fiber.Handler {
 		}
 
 		newQuantity := purchase.Quantity + purchaseItem.Quantity
-		if err = tx.Model(&purchase).Update("quantity", newQuantity).Error; err != nil {
+		if err := tx.Model(&purchase).Update("quantity", newQuantity).Error; err != nil {
 			tx.Rollback()
 			fmt.Println("error", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -73,7 +74,7 @@ func AddPurchase(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		if err = tx.Commit().Error; err != nil {
+		if err := tx.Commit().Error; err != nil {
 			fmt.Println("error", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Ошибка при сохранении изменений в базе данных",

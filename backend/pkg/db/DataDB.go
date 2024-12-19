@@ -5,7 +5,7 @@ import (
 )
 
 type Client struct {
-	ClientID    int    `gorm:"column:client_id;primaryKey;autoIncrement"`
+	ClientID    int    `gorm:"column:client_id;primaryKey;autoIncrement" json:"id"`
 	FullName    string `gorm:"column:full_name;not null" json:"FullName"`
 	PhoneNumber string `gorm:"column:phone_number;not null;unique" json:"PhoneNumber"`
 	Email       string `gorm:"column:email;not null;unique" json:"Email"`

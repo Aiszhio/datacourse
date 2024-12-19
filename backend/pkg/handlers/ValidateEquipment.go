@@ -19,10 +19,6 @@ func ValidateOrderEquipment(order db2.Order, db *gorm.DB) error {
 		return fmt.Errorf("Ошибка при получении требуемого оборудования")
 	}
 
-	if len(requiredEquipment) == 0 {
-		return fmt.Errorf("Для выбранной услуги не требуется оборудование")
-	}
-
 	var overlappingOrderIDs []int
 	if err := db.Table("orders").
 		Where("orders.receipt_date > ? AND orders.order_date < ?", order.OrderDate, order.ReceiptDate).

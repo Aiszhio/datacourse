@@ -13,77 +13,71 @@ import (
 func FireWorker(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		workerIDStr := c.Params("id")
-		fmt.Printf("Received workerIDStr: %s\n", workerIDStr)
-
 		if workerIDStr == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"message": "Employee ID is required.",
+				"message": "Отсутствует идентификатор сотрудника.",
 			})
 		}
 
 		workerID, err := strconv.Atoi(workerIDStr)
 		if err != nil {
-			fmt.Printf("Error converting workerIDStr to int: %v\n", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"message": "Invalid Employee ID.",
+				"message": "Неверный формат идентификатора сотрудника.",
 			})
 		}
-		fmt.Printf("Parsed workerID: %d\n", workerID)
 
 		var employee db2.Employee
 		if err = db.First(&employee, workerID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-					"error": "Сотрудник не найден",
+					"error": "Сотрудник не найден.",
 				})
 			}
-			fmt.Printf("Error retrieving employee: %v\n", err)
+			fmt.Printf("Ошибка при получении сотрудника из БД: %v\n", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Ошибка при поиске сотрудника",
+				"error": "Ошибка при поиске сотрудника в базе.",
 			})
 		}
 
 		if employee.Status == "Уволен" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Сотрудник уже уволен",
+				"error": "Сотрудник уже уволен.",
 			})
 		}
 
 		nowUtc := time.Now().UTC()
-		fmt.Printf("Current time in UTC: %s\n", nowUtc.Format(time.RFC3339))
 
 		var upcomingOrders int64
+		// Допустим, что services.days — это целочисленный тип, совместимый с int.
+		// Если это bigint, то делаем явное приведение к int: services.days::int
 		if err = db.Table("orders").
-			Where("employee_id = ? AND order_date > ?", workerID, nowUtc).
+			Joins("INNER JOIN services ON orders.service_name = services.name").
+			Where("orders.employee_id = ? AND (orders.order_date + make_interval(0,0,0,services.days::int,0,0,0)) > ?", workerID, nowUtc).
 			Count(&upcomingOrders).Error; err != nil {
-			fmt.Printf("Error checking upcoming orders: %v\n", err)
+			fmt.Printf("Ошибка при проверке предстоящих заказов: %v\n", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"message": "Ошибка при проверке предстоящих заказов.",
 			})
 		}
 
-		fmt.Printf("Upcoming orders for employee %d: %d\n", workerID, upcomingOrders)
-
 		if upcomingOrders > 0 {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"message": "Сотрудника нельзя уволить, так как у него есть предстоящие заказы.",
+				"error": "Невозможно уволить сотрудника, так как у него есть предстоящие заказы.",
 			})
 		}
 
 		if err = db.Model(&employee).Update("status", "Уволен").Error; err != nil {
-			fmt.Printf("Error updating employee status: %v\n", err)
+			fmt.Printf("Ошибка при обновлении статуса сотрудника: %v\n", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"message": "Ошибка при обновлении статуса сотрудника.",
 			})
 		}
 
-		fmt.Printf("Employee %d fired successfully.\n", workerID)
-
 		loc, err := time.LoadLocation("Europe/Moscow")
 		if err != nil {
-			fmt.Printf("Error loading Moscow location: %v\n", err)
+			fmt.Printf("Ошибка при загрузке временной зоны Москва: %v\n", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"message": "Ошибка при загрузке местоположения.",
+				"message": "Ошибка при настройке временной зоны.",
 			})
 		}
 
