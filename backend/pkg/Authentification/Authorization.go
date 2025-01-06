@@ -54,7 +54,7 @@ func userDefineRole(phone, password string, db *gorm.DB) (string, error) {
 		return role, nil
 	}
 
-	return "", fmt.Errorf("user with phone %s not found in any role", phone)
+	return "", fmt.Errorf("Пользователь с таким номером телефона или паролем не найден")
 }
 
 func Authorize(db *gorm.DB, client *redis.Client) fiber.Handler {
@@ -111,6 +111,23 @@ func Authorize(db *gorm.DB, client *redis.Client) fiber.Handler {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Error saving cookies to Redis",
 			})
+		}
+
+		var employee database.Employee
+
+		if role != "client" {
+			if err = db.Table("employees").Where("phone_number = ?", customer.Phone).
+				First(&employee).Error; err != nil {
+				fmt.Println("2312312312312312312")
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": "Ошибка при логине",
+				})
+			}
+			if employee.Status == "Уволен" {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": "Вы уволены",
+				})
+			}
 		}
 
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{

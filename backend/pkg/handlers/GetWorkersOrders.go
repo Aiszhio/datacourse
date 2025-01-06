@@ -3,7 +3,7 @@ package handlers
 import (
 	"fmt"
 	"github.com/Aiszhio/datacourse.git/pkg/Redis"
-	db2 "github.com/Aiszhio/datacourse.git/pkg/db"
+	database "github.com/Aiszhio/datacourse.git/pkg/db"
 	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -12,21 +12,24 @@ import (
 	"time"
 )
 
+// WorkerOrders представляет структуру данных заказа с добавленным полем IssueDate
 type WorkerOrders struct {
-	OrderID     int       `json:"id" gorm:"column:order_id"`
-	ClientName  string    `json:"clientName" gorm:"column:client_name"`
-	ServiceName string    `json:"serviceName" gorm:"column:service_name"`
-	OrderDate   time.Time `json:"orderDate" gorm:"column:order_date"`
-	ReceiptDate time.Time `json:"receiptDate" gorm:"column:receipt_date"`
+	OrderID     int        `json:"id" gorm:"column:order_id"`
+	ClientName  string     `json:"clientName" gorm:"column:client_name"`
+	ServiceName string     `json:"serviceName" gorm:"column:service_name"`
+	OrderDate   time.Time  `json:"orderDate" gorm:"column:order_date"`
+	ReceiptDate time.Time  `json:"receiptDate" gorm:"column:receipt_date"`
+	IssueDate   *time.Time `json:"issueDate" gorm:"column:issue_date"` // Новое поле
 }
 
+// WorkerOrderResponse заменяет RemainingTime на IssueDate
 type WorkerOrderResponse struct {
-	OrderID         int       `json:"id"`
-	ClientName      string    `json:"clientName"`
-	ServiceName     string    `json:"serviceName"`
-	OrderDate       time.Time `json:"orderDate"`
-	AdjustedReceipt time.Time `json:"adjustedReceiptDate"`
-	RemainingTime   string    `json:"remainingTime,omitempty"`
+	OrderID         int        `json:"id"`
+	ClientName      string     `json:"clientName"`
+	ServiceName     string     `json:"serviceName"`
+	OrderDate       time.Time  `json:"orderDate"`
+	AdjustedReceipt time.Time  `json:"adjustedReceiptDate"`
+	IssueDate       *time.Time `json:"issueDate,omitempty"`
 }
 
 type OrdersMapResponse struct {
@@ -71,7 +74,7 @@ func GetWorkerOrders(db *gorm.DB, client *redis.Client) fiber.Handler {
 		log.Printf("Получение заказов для employeeId: %d", employeeId)
 
 		if err = db.Table("orders").
-			Select("orders.order_id, clients.full_name as client_name, services.name as service_name, orders.order_date, orders.receipt_date").
+			Select("orders.order_id, clients.full_name as client_name, services.name as service_name, orders.order_date, orders.receipt_date, orders.issue_date").
 			Joins("JOIN clients ON orders.client_id = clients.client_id").
 			Joins("JOIN services ON orders.service_name = services.name").
 			Where("orders.employee_id = ? AND orders.service_name IS NOT NULL AND orders.service_name <> ''", employeeId).
@@ -85,8 +88,12 @@ func GetWorkerOrders(db *gorm.DB, client *redis.Client) fiber.Handler {
 		log.Printf("Получено заказов: %d", len(orders))
 
 		for _, order := range orders {
-			log.Printf("Заказ ID: %d, ClientName: '%s', ServiceName: '%s', OrderDate: %s, ReceiptDate: %s",
-				order.OrderID, order.ClientName, order.ServiceName, order.OrderDate.Format(time.RFC3339), order.ReceiptDate.Format(time.RFC3339))
+			issueDateStr := "NULL"
+			if order.IssueDate != nil {
+				issueDateStr = order.IssueDate.Format(time.RFC3339)
+			}
+			log.Printf("Заказ ID: %d, ClientName: '%s', ServiceName: '%s', OrderDate: %s, ReceiptDate: %s, IssueDate: %s",
+				order.OrderID, order.ClientName, order.ServiceName, order.OrderDate.Format(time.RFC3339), order.ReceiptDate.Format(time.RFC3339), issueDateStr)
 		}
 
 		ordersMap, err := GetOrders(db, orders)
@@ -116,12 +123,12 @@ func GetOrders(db *gorm.DB, orders []WorkerOrders) (OrdersMapResponse, error) {
 		serviceNames = append(serviceNames, order.ServiceName)
 	}
 
-	var services []db2.Service
+	var services []database.Service
 	if err := db.Table("services").Where("name IN ?", serviceNames).Find(&services).Error; err != nil {
 		return OrdersMapResponse{}, fmt.Errorf("ошибка при получении данных об услугах: %w", err)
 	}
 
-	serviceMap := make(map[string]db2.Service)
+	serviceMap := make(map[string]database.Service)
 	for _, service := range services {
 		serviceMap[service.Name] = service
 	}
@@ -133,37 +140,66 @@ func GetOrders(db *gorm.DB, orders []WorkerOrders) (OrdersMapResponse, error) {
 			continue
 		}
 
-		adjustedReceiptDate := order.ReceiptDate.AddDate(0, 0, service.Days)
+		adjustedReceiptDate := order.ReceiptDate
 		log.Printf("Заказ ID %d: adjustedReceiptDate = %s", order.OrderID, adjustedReceiptDate.Format(time.RFC3339))
 
-		remainingTime := adjustedReceiptDate.AddDate(0, 0, service.Days).Format(time.RFC3339)
+		if order.IssueDate != nil {
+			classificationTime := *order.IssueDate
+			isPast := classificationTime.Before(now)
+			log.Printf("Заказ ID %d: IssueDate = %s, isPast = %v", order.OrderID, classificationTime.Format(time.RFC3339), isPast)
 
-		parsedRemainingTime, err := time.Parse(time.RFC3339, remainingTime)
-		if err != nil {
-			log.Printf("Ошибка парсинга remainingTime для заказа ID %d: %v", order.OrderID, err)
-			continue
-		}
-
-		if parsedRemainingTime.Before(now) {
-			pastOrders = append(pastOrders, WorkerOrderResponse{
-				OrderID:         order.OrderID,
-				ClientName:      order.ClientName,
-				ServiceName:     order.ServiceName,
-				OrderDate:       order.OrderDate,
-				AdjustedReceipt: adjustedReceiptDate,
-				RemainingTime:   remainingTime,
-			})
-			log.Printf("Заказ ID %d классифицирован как прошедший, RemainingTime = %s", order.OrderID, remainingTime)
+			if isPast {
+				pastOrders = append(pastOrders, WorkerOrderResponse{
+					OrderID:         order.OrderID,
+					ClientName:      order.ClientName,
+					ServiceName:     order.ServiceName,
+					OrderDate:       order.OrderDate,
+					AdjustedReceipt: adjustedReceiptDate,
+					IssueDate:       order.IssueDate,
+				})
+			} else {
+				futureOrders = append(futureOrders, WorkerOrderResponse{
+					OrderID:         order.OrderID,
+					ClientName:      order.ClientName,
+					ServiceName:     order.ServiceName,
+					OrderDate:       order.OrderDate,
+					AdjustedReceipt: adjustedReceiptDate,
+					IssueDate:       order.IssueDate,
+				})
+				log.Printf("Заказ ID %d классифицирован как будущий, IssueDate = %v", order.OrderID, order.IssueDate)
+			}
 		} else {
-			futureOrders = append(futureOrders, WorkerOrderResponse{
-				OrderID:         order.OrderID,
-				ClientName:      order.ClientName,
-				ServiceName:     order.ServiceName,
-				OrderDate:       order.OrderDate,
-				AdjustedReceipt: adjustedReceiptDate,
-				RemainingTime:   remainingTime,
-			})
-			log.Printf("Заказ ID %d классифицирован как будущий, RemainingTime = %s", order.OrderID, remainingTime)
+			remainingTime := adjustedReceiptDate.AddDate(0, 0, service.Days).Format(time.RFC3339)
+
+			parsedRemainingTime, err := time.Parse(time.RFC3339, remainingTime)
+			if err != nil {
+				log.Printf("Ошибка парсинга remainingTime для заказа ID %d: %v", order.OrderID, err)
+				continue
+			}
+
+			isPast := parsedRemainingTime.Before(now)
+			log.Printf("Заказ ID %d: RemainingTime = %s, isPast = %v", order.OrderID, remainingTime, isPast)
+
+			if isPast {
+				pastOrders = append(pastOrders, WorkerOrderResponse{
+					OrderID:         order.OrderID,
+					ClientName:      order.ClientName,
+					ServiceName:     order.ServiceName,
+					OrderDate:       order.OrderDate,
+					AdjustedReceipt: adjustedReceiptDate,
+					IssueDate:       order.IssueDate, // nil
+				})
+			} else {
+				futureOrders = append(futureOrders, WorkerOrderResponse{
+					OrderID:         order.OrderID,
+					ClientName:      order.ClientName,
+					ServiceName:     order.ServiceName,
+					OrderDate:       order.OrderDate,
+					AdjustedReceipt: adjustedReceiptDate,
+					IssueDate:       order.IssueDate, // nil
+				})
+				log.Printf("Заказ ID %d классифицирован как будущий, RemainingTime = %s", order.OrderID, remainingTime)
+			}
 		}
 	}
 

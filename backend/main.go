@@ -43,7 +43,7 @@ func main() {
 
 	webApp.Post("/api/login", Authentification.Authorize(dbu, rdb))
 	webApp.Post("/api/register", Authentification.Registration(dbu))
-	webApp.Get("/api/CheckRole", Authentification.CheckUserRole(rdb))
+	webApp.Get("/api/CheckRole", Authentification.CheckUserRole(dbu, rdb))
 	webApp.Get("/api/user", handlers.GetUserName(rdb))
 	webApp.Get("/api/orders", handlers.ClientOrdersApi(dbu, rdb))
 	webApp.Get("/api/bookings", handlers.GetBookings(dbu, rdb))
@@ -76,6 +76,8 @@ func main() {
 	webApp.Delete("/api/services/:service_id", handlers.DeleteService(dbu))
 	webApp.Put("/api/admin/clients/:id", handlers.PutClient(dbu))
 	webApp.Delete("/api/admin/clients/:id", handlers.DeleteClient(dbu))
+	webApp.Delete("/api/orders/:orderId", handlers.DeleteOrder(dbu))
+	webApp.Post("/api/orders/issue/:id", handlers.IssueOrder(dbu))
 
 	defer rdb.Close()
 	defer log.Fatal(webApp.Listen(":8080"))

@@ -31,7 +31,6 @@
           </td>
           <td>
             <button @click="openEditServiceModal(service)" class="btn">Редактировать</button>
-            <button @click="openDeleteServiceModal(service)" class="btn danger">Удалить</button>
           </td>
         </tr>
         </tbody>
@@ -61,70 +60,145 @@
           <td>{{ equipment.model }}</td>
           <td>
             <button @click="openEditEquipmentModal(equipment)" class="btn">Редактировать</button>
-            <button @click="openSubtractEquipmentModal(equipment)" class="btn danger">Списать</button>
           </td>
         </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Модальные окна для добавления и редактирования -->
-    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-      <div class="modal">
-        <h3>{{ modalTitle }}</h3>
-        <form @submit.prevent="saveItem">
-          <!-- Модальное окно для услуг -->
-          <div v-if="modalType === 'service'">
-            <label class="form-label">Название услуги:</label>
-            <input v-model="currentItem.name" required class="form-input" maxlength="50" />
+    <!-- Модальное окно для добавления/редактирования услуги -->
+    <b-modal
+        id="service-modal"
+        v-model="showServiceModal"
+        :title="modalTitle"
+        hide-footer
+        @hide="resetServiceForm"
+    >
+      <form @submit.prevent="saveService">
+        <div class="mb-3">
+          <label for="serviceName" class="form-label">Название услуги:</label>
+          <input
+              id="serviceName"
+              type="text"
+              v-model="currentService.name"
+              class="form-control"
+              placeholder="Введите название услуги"
+              maxlength="50"
+              required
+          />
+        </div>
 
-            <label class="form-label">Стоимость:</label>
-            <div class="price-input">
-              <input type="number" v-model="currentItem.price" required class="form-input" min="0" />
-              <span>₽</span>
-            </div>
-
-            <label class="form-label">Требуемое оборудование:</label>
-            <select v-model="currentItem.requiredEquipment" multiple class="form-input">
-              <option v-for="equipment in equipmentList" :key="equipment.equipment_id" :value="equipment.equipment_id">
-                {{ equipment.type }} - {{ equipment.brand }} {{ equipment.model }}
-              </option>
-            </select>
+        <div class="mb-3">
+          <label for="servicePrice" class="form-label">Стоимость:</label>
+          <div class="input-group">
+            <input
+                id="servicePrice"
+                type="number"
+                v-model="currentService.price"
+                class="form-control"
+                placeholder="Введите стоимость"
+                min="0"
+                required
+            />
+            <span class="input-group-text">₽</span>
           </div>
+        </div>
 
-          <!-- Модальное окно для оборудования -->
-          <div v-if="modalType === 'equipment'">
-            <label class="form-label">Тип оборудования:</label>
-            <select v-model="currentItem.type" required class="form-input">
-              <option disabled value="">Выберите тип</option>
-              <option v-for="type in equipmentTypes" :key="type" :value="type">{{ type }}</option>
-            </select>
+        <div class="mb-3">
+          <label for="requiredEquipment" class="form-label">Требуемое оборудование:</label>
+          <select
+              id="requiredEquipment"
+              v-model="currentService.requiredEquipment"
+              multiple
+              class="form-select"
+          >
+            <option
+                v-for="equipment in equipmentList"
+                :key="equipment.equipment_id"
+                :value="equipment.equipment_id"
+            >
+              {{ equipment.type }} - {{ equipment.brand }} {{ equipment.model }}
+            </option>
+          </select>
+        </div>
 
-            <label class="form-label">Марка:</label>
-            <input v-model="currentItem.brand" required class="form-input" />
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+          <button type="button" @click="closeServiceModal" class="btn btn-danger">Отмена</button>
+        </div>
+      </form>
+    </b-modal>
 
-            <label class="form-label">Модель:</label>
-            <input v-model="currentItem.model" required class="form-input" />
-          </div>
-
-          <!-- Модальное окно для списания оборудования -->
-          <!-- Модальное окно для списания оборудования -->
-          <div v-if="modalType === 'subtractEquipment'">
-            <p>Вы уверены, что хотите списать оборудование:</p>
-            <p><strong>{{ currentItem.type }} - {{ currentItem.brand }} {{ currentItem.model }}</strong></p>
-          </div>
-
-          <!-- Кнопки действия -->
-          <div v-if="modalType !== 'subtractEquipment'">
-            <button type="submit" class="btn">Удалить</button>
-          </div>
-          <div v-else>
-            <button @click.prevent="subtractEquipment" type="button" class="btn danger">Списать</button>
-          </div>
-          <button @click="closeModal" type="button" class="btn danger">Отмена</button>
-        </form>
+    <!-- Модальное окно для списания оборудования -->
+    <b-modal
+        id="subtract-equipment-modal"
+        v-model="showSubtractEquipmentModal"
+        title="Списать оборудование"
+        hide-footer
+        @hide="resetSubtractEquipmentForm"
+    >
+      <div>
+        <p>Вы уверены, что хотите списать оборудование:</p>
+        <p><strong>{{ currentEquipment.type }} - {{ currentEquipment.brand }} {{ currentEquipment.model }}</strong></p>
+        <div class="d-flex justify-content-end mt-3">
+          <button @click="subtractEquipment" class="btn btn-danger me-2">Списать</button>
+          <button @click="closeSubtractEquipmentModal" class="btn btn-secondary">Отмена</button>
+        </div>
       </div>
-    </div>
+    </b-modal>
+
+    <!-- Модальное окно для добавления/редактирования оборудования -->
+    <b-modal
+        id="equipment-modal"
+        v-model="showEquipmentModal"
+        :title="equipmentModalTitle"
+        hide-footer
+        @hide="resetEquipmentForm"
+    >
+      <form @submit.prevent="saveEquipment">
+        <div class="mb-3">
+          <label for="equipmentType" class="form-label">Тип оборудования:</label>
+          <select
+              id="equipmentType"
+              v-model="currentEquipment.type"
+              class="form-control"
+              required
+          >
+            <option disabled value="">Выберите тип</option>
+            <option v-for="type in equipmentTypes" :key="type" :value="type">{{ type }}</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="equipmentBrand" class="form-label">Марка:</label>
+          <input
+              id="equipmentBrand"
+              type="text"
+              v-model="currentEquipment.brand"
+              class="form-control"
+              placeholder="Введите марку оборудования"
+              required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label for="equipmentModel" class="form-label">Модель:</label>
+          <input
+              id="equipmentModel"
+              type="text"
+              v-model="currentEquipment.model"
+              class="form-control"
+              placeholder="Введите модель оборудования"
+              required
+          />
+        </div>
+
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+          <button type="button" @click="closeEquipmentModal" class="btn btn-danger">Отмена</button>
+        </div>
+      </form>
+    </b-modal>
 
     <!-- Панель навигации с карточками -->
     <div class="card-panel">
@@ -159,6 +233,11 @@
 
 <script>
 import axios from 'axios';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ru';
+import Swal from 'sweetalert2';
+
+dayjs.locale('ru'); // Устанавливаем русскую локаль
 
 export default {
   name: 'Services',
@@ -166,16 +245,16 @@ export default {
     return {
       services: [], // Список услуг
       equipmentList: [], // Список оборудования
-      showModal: false,
-      modalType: '',
+      showServiceModal: false, // Модальное окно для услуг
+      showSubtractEquipmentModal: false, // Модальное окно для списания оборудования
+      showEquipmentModal: false, // Модальное окно для оборудования
       modalTitle: '',
-      currentItem: {},
+      equipmentModalTitle: '',
+      currentService: {},
+      currentEquipment: {},
       equipmentTypes: ['Принтер', 'Фотокамера', 'Видеокамера'], // Типы оборудования
-      expandedServiceIds: [] // Отслеживание развёрнутых услуг
+      expandedServiceIds: [], // Отслеживание развёрнутых услуг
     };
-  },
-  created() {
-    this.fetchServicesAndEquipment();
   },
   computed: {
     sortedServices() {
@@ -202,320 +281,304 @@ export default {
         console.log('Список оборудования:', this.equipmentList);
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error);
-        alert('Не удалось загрузить данные об услугах и оборудовании.');
+        this.showAlert('Не удалось загрузить данные об услугах и оборудовании.', 'error');
       }
-    },
-    // Навигация
-    goToAdminHome() {
-      this.$router.push({ name: 'AdminHome' });
-    },
-    goToEmployeesPage() {
-      this.$router.push({ name: 'ManageEmp' });
-    },
-    goToOrdersPage() {
-      this.$router.push({ name: 'OrderHistory' });
-    },
-    goToMaterialsPage() {
-      this.$router.push({ name: 'MaterialsOverview' });
-    },
-    goToBookingsPage() {
-      this.$router.push({ name: 'Bookings' });
-    },
-    goToClients() {
-      this.$router.push({ name: 'Clients' })
     },
 
     // Открытие модального окна для добавления услуги
     openAddServiceModal() {
       console.log('Открытие модального окна для добавления услуги');
-      this.modalType = 'service';
       this.modalTitle = 'Добавить услугу';
-      this.currentItem = {
+      this.currentService = {
         name: '',
         price: '',
         requiredEquipment: [],
       };
-      this.showModal = true;
+      this.showServiceModal = true;
     },
 
     // Открытие модального окна для редактирования услуги
     openEditServiceModal(service) {
       console.log('Открытие модального окна для редактирования услуги:', service);
-      this.modalType = 'service';
       this.modalTitle = 'Редактировать услугу';
       // Копируем объект, чтобы избежать прямого изменения оригинала
-      this.currentItem = {
+      this.currentService = {
         ...service,
         requiredEquipment: service.RequiredEquipment.map(eq => eq.equipment_id),
       };
-      this.showModal = true;
+      this.showServiceModal = true;
     },
 
+    // Открытие модального окна для списания оборудования
+    openSubtractEquipmentModal(equipment) {
+      console.log('Открытие модального окна для списания оборудования:', equipment);
+      this.currentEquipment = { ...equipment };
+      this.showSubtractEquipmentModal = true;
+    },
+
+    // Открытие модального окна для добавления оборудования
+    openAddEquipmentModal() {
+      console.log('Открытие модального окна для добавления оборудования');
+      this.equipmentModalTitle = 'Добавить оборудование';
+      this.currentEquipment = {
+        type: '',
+        brand: '',
+        model: '',
+      };
+      this.showEquipmentModal = true;
+    },
+
+    // Открытие модального окна для редактирования оборудования
+    openEditEquipmentModal(equipment) {
+      console.log('Открытие модального окна для редактирования оборудования:', equipment);
+      this.equipmentModalTitle = 'Редактировать оборудование';
+      this.currentEquipment = { ...equipment };
+      this.showEquipmentModal = true;
+    },
+
+    // Сохранение услуги (добавление или редактирование)
+    async saveService() {
+      if (this.currentService.name.trim() === '' || this.currentService.price === '') {
+        this.showAlert('Пожалуйста, заполните все обязательные поля.', 'warning');
+        return;
+      }
+
+      try {
+        if (this.currentService.service_id) {
+          // Редактирование услуги
+          const response = await axios.put(
+              `http://localhost:8080/api/services/${this.currentService.service_id}`,
+              {
+                name: this.currentService.name,
+                price: this.currentService.price,
+                requiredEquipment: this.currentService.requiredEquipment, // Массив equipment_id
+              },
+              { withCredentials: true }
+          );
+
+          if (response.data.message) {
+            this.showAlert(response.data.message, 'success');
+          } else {
+            this.showAlert('Услуга успешно обновлена.', 'success');
+          }
+
+          // Обновляем услугу в списке
+          this.services = this.services.map(service =>
+              service.service_id === this.currentService.service_id ? response.data : service
+          );
+        } else {
+          // Добавление новой услуги
+          const response = await axios.post(
+              'http://localhost:8080/api/services/admin',
+              {
+                name: this.currentService.name,
+                price: this.currentService.price,
+                requiredEquipment: this.currentService.requiredEquipment, // Массив equipment_id
+              },
+              { withCredentials: true }
+          );
+
+          if (response.data.message) {
+            this.showAlert(response.data.message, 'success');
+          } else {
+            this.showAlert('Услуга успешно добавлена.', 'success');
+          }
+
+          // Добавляем новую услугу в список
+          this.services.push(response.data);
+        }
+
+        // Закрытие модального окна
+        this.closeServiceModal();
+      } catch (error) {
+        console.error('Ошибка при сохранении услуги:', error);
+        if (error.response && error.response.data && error.response.data.error) {
+          this.showAlert(`Ошибка: ${error.response.data.error}`, 'error');
+        } else {
+          this.showAlert('Не удалось сохранить услугу.', 'error');
+        }
+      }
+    },
+
+    // Сохранение оборудования (добавление или редактирование)
+    async saveEquipment() {
+      if (this.currentEquipment.type.trim() === '' ||
+          this.currentEquipment.brand.trim() === '' ||
+          this.currentEquipment.model.trim() === '') {
+        this.showAlert('Пожалуйста, заполните все обязательные поля.', 'warning');
+        return;
+      }
+
+      try {
+        if (this.currentEquipment.equipment_id) {
+          // Редактирование оборудования
+          const response = await axios.put(
+              `http://localhost:8080/api/equipment/${this.currentEquipment.equipment_id}`,
+              {
+                type: this.currentEquipment.type,
+                brand: this.currentEquipment.brand,
+                model: this.currentEquipment.model,
+              },
+              { withCredentials: true }
+          );
+
+          if (response.data.message) {
+            this.showAlert(response.data.message, 'success');
+          } else {
+            this.showAlert('Оборудование успешно обновлено.', 'success');
+          }
+
+          // Обновляем оборудование в списке
+          this.equipmentList = this.equipmentList.map(equipment =>
+              equipment.equipment_id === this.currentEquipment.equipment_id ? response.data : equipment
+          );
+        } else {
+          // Добавление нового оборудования
+          const response = await axios.post(
+              'http://localhost:8080/api/equipment/admin',
+              {
+                type: this.currentEquipment.type,
+                brand: this.currentEquipment.brand,
+                model: this.currentEquipment.model,
+              },
+              { withCredentials: true }
+          );
+
+          if (response.data.message) {
+            this.showAlert(response.data.message, 'success');
+          } else {
+            this.showAlert('Оборудование успешно добавлено.', 'success');
+          }
+
+          // Добавляем новое оборудование в список
+          this.equipmentList.push(response.data);
+        }
+
+        // Закрытие модального окна
+        this.closeEquipmentModal();
+      } catch (error) {
+        console.error('Ошибка при сохранении оборудования:', error);
+        if (error.response && error.response.data && error.response.data.error) {
+          this.showAlert(`Ошибка: ${error.response.data.error}`, 'error');
+        } else {
+          this.showAlert('Не удалось сохранить оборудование.', 'error');
+        }
+      }
+    },
+
+    // Списание оборудования
     async subtractEquipment() {
       try {
-        console.log('Списание оборудования:', this.currentItem);
-        const equipmentID = this.currentItem.equipment_id;
+        console.log('Списание оборудования:', this.currentEquipment);
+        const equipmentID = this.currentEquipment.equipment_id;
 
         // Отправка DELETE запроса на сервер
         const response = await axios.delete(
             `http://localhost:8080/api/equipment/${equipmentID}`,
             { withCredentials: true }
         );
-        console.log('Ответ сервера при списании оборудования:', response.data);
 
         if (response.data.message) {
-          alert(response.data.message);
+          this.showAlert(response.data.message, 'success');
         } else {
-          alert('Оборудование успешно списано.');
+          this.showAlert('Оборудование успешно списано.', 'success');
         }
 
         // Обновление списка оборудования в UI
         this.equipmentList = this.equipmentList.filter(e => e.equipment_id !== equipmentID);
-        this.closeModal();
+        this.closeSubtractEquipmentModal();
       } catch (error) {
         console.error('Ошибка при списании оборудования:', error);
         if (error.response && error.response.data && error.response.data.error) {
-          alert(`Ошибка: ${error.response.data.error}`);
+          this.showAlert(`Ошибка: ${error.response.data.error}`, 'error');
         } else {
-          alert('Не удалось списать оборудование.');
+          this.showAlert('Не удалось списать оборудование.', 'error');
         }
       }
     },
 
-    // Открытие модального окна для редактирования оборудования
-    openEditEquipmentModal(equipment) {
-      console.log('Открытие модального окна для редактирования оборудования:', equipment);
-      this.modalType = 'equipment';
-      this.modalTitle = 'Редактировать оборудование';
-      this.currentItem = { ...equipment };
-      this.showModal = true;
+    // Открытие модального окна для удаления услуги
+    openDeleteServiceModal(service) {
+      console.log('Открытие модального окна для удаления услуги:', service);
+      Swal.fire({
+        title: 'Вы уверены?',
+        text: `Вы хотите удалить услугу "${service.name}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Да, удалить',
+        cancelButtonText: 'Отмена',
+        reverseButtons: true,
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          await this.deleteService(service.service_id);
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+          this.showAlert('Удаление услуги отменено.', 'info');
+        }
+      });
     },
 
-    // Открытие модального окна для добавления оборудования
-    openAddEquipmentModal() {
-      console.log('Открытие модального окна для добавления оборудования');
-      this.modalType = 'equipment';
-      this.modalTitle = 'Добавить оборудование';
-      this.currentItem = {
-        type: '',
-        brand: '',
-        model: '',
-      };
-      this.showModal = true;
-    },
+    // Удаление услуги
+    async deleteService(service_id) {
+      try {
+        const response = await axios.delete(
+            `http://localhost:8080/api/services/${service_id}`,
+            { withCredentials: true }
+        );
 
-    // Открытие модального окна для списания оборудования
-    openSubtractEquipmentModal(equipment) {
-      console.log('Открытие модального окна для списания оборудования:', equipment);
-      this.modalType = 'subtractEquipment';
-      this.modalTitle = 'Списать оборудование';
-      this.currentItem = { ...equipment };
-      this.showModal = true;
-    },
-
-    // Сохранение услуги или оборудования
-    async saveItem() {
-      if (this.modalType === 'service') {
-        if (this.currentItem.service_id) {
-          // Редактирование услуги
-          try {
-            console.log('Редактирование услуги:', this.currentItem);
-            const response = await axios.put(
-                `http://localhost:8080/api/services/${this.currentItem.service_id}`,
-                {
-                  name: this.currentItem.name,
-                  price: this.currentItem.price,
-                  requiredEquipment: this.currentItem.requiredEquipment, // Массив equipment_id
-                },
-                { withCredentials: true }
-            );
-            console.log('Ответ сервера при редактировании услуги:', response.data);
-
-            // Обновляем услугу в списке
-            this.services = this.services.map(service =>
-                service.service_id === this.currentItem.service_id ? response.data : service
-            );
-
-            // Отображаем сообщение об успехе
-            if (response.data.message) {
-              alert(response.data.message);
-            } else {
-              alert('Услуга успешно обновлена.');
-            }
-
-            // Закрытие модального окна
-            this.closeModal();
-          } catch (error) {
-            console.error('Ошибка при редактировании услуги:', error);
-            if (error.response && error.response.data && error.response.data.error) {
-              alert(`Ошибка: ${error.response.data.error}`);
-            } else {
-              alert('Не удалось обновить услугу.');
-            }
-          }
+        if (response.data.message) {
+          this.showAlert(response.data.message, 'success');
         } else {
-          // Добавление новой услуги
-          try {
-            console.log('Добавление новой услуги:', this.currentItem);
-            const response = await axios.post(
-                'http://localhost:8080/api/services/admin',
-                {
-                  name: this.currentItem.name,
-                  price: this.currentItem.price,
-                  requiredEquipment: this.currentItem.requiredEquipment, // Массив equipment_id
-                },
-                { withCredentials: true }
-            );
-            console.log('Ответ сервера при добавлении услуги:', response.data);
-
-            const newService = response.data;
-
-            // Добавляем новую услугу в список
-            this.services.push(newService);
-
-            // Отображаем сообщение об успехе
-            if (response.data.message) {
-              alert(response.data.message);
-            } else {
-              alert('Услуга успешно добавлена.');
-            }
-
-            // Закрытие модального окна
-            this.closeModal();
-          } catch (error) {
-            console.error('Ошибка при добавлении услуги:', error);
-            if (error.response && error.response.data && error.response.data.error) {
-              alert(`Ошибка: ${error.response.data.error}`);
-            } else {
-              alert('Не удалось добавить услугу.');
-            }
-          }
+          this.showAlert('Услуга успешно удалена.', 'success');
         }
-      } else if (this.modalType === 'equipment') {
-        if (this.currentItem.equipment_id) {
-          // Редактирование оборудования
-          try {
-            console.log('Редактирование оборудования:', this.currentItem);
-            const response = await axios.put(
-                `http://localhost:8080/api/equipment/${this.currentItem.equipment_id}`,
-                {
-                  type: this.currentItem.type,
-                  brand: this.currentItem.brand,
-                  model: this.currentItem.model,
-                },
-                { withCredentials: true }
-            );
-            console.log('Ответ сервера при редактировании оборудования:', response.data);
 
-            const updatedEquipment = response.data;
-
-            // Обновляем оборудование в списке
-            this.equipmentList = this.equipmentList.map(equipment =>
-                equipment.equipment_id === this.currentItem.equipment_id ? updatedEquipment : equipment
-            );
-
-            // Отображаем сообщение об успехе
-            if (response.data.message) {
-              alert(response.data.message);
-            } else {
-              alert('Оборудование успешно обновлено.');
-            }
-
-            // Закрытие модального окна
-            this.closeModal();
-          } catch (error) {
-            console.error('Ошибка при редактировании оборудования:', error);
-            if (error.response && error.response.data && error.response.data.error) {
-              alert(`Ошибка: ${error.response.data.error}`);
-            } else {
-              alert('Не удалось обновить оборудование.');
-            }
-          }
+        // Обновление списка услуг
+        this.services = this.services.filter(service => service.service_id !== service_id);
+      } catch (error) {
+        console.error('Ошибка при удалении услуги:', error);
+        if (error.response && error.response.data && error.response.data.error) {
+          this.showAlert(`Ошибка: ${error.response.data.error}`, 'error');
         } else {
-          // Добавление нового оборудования
-          try {
-            console.log('Добавление нового оборудования:', this.currentItem);
-            const response = await axios.post(
-                'http://localhost:8080/api/equipment/admin',
-                {
-                  type: this.currentItem.type,
-                  brand: this.currentItem.brand,
-                  model: this.currentItem.model,
-                },
-                { withCredentials: true }
-            );
-            console.log('Ответ сервера при добавлении оборудования:', response.data);
-
-            const newEquipment = response.data;
-
-            // Добавляем новое оборудование в список
-            this.equipmentList.push(newEquipment);
-
-            // Отображаем сообщение об успехе
-            if (response.data.message) {
-              alert(response.data.message);
-            } else {
-              alert('Оборудование успешно добавлено.');
-            }
-
-            // Закрытие модального окна
-            this.closeModal();
-          } catch (error) {
-            console.error('Ошибка при добавлении оборудования:', error);
-            if (error.response && error.response.data && error.response.data.error) {
-              alert(`Ошибка: ${error.response.data.error}`);
-            } else {
-              alert('Не удалось добавить оборудование.');
-            }
-          }
+          this.showAlert('Не удалось удалить услугу.', 'error');
         }
-      } else if (this.modalType === 'subtractEquipment') {
-        // Списание оборудования
-        try {
-          console.log('Списание оборудования:', this.currentItem);
-          const equipmentID = this.currentItem.equipment_id;
-
-          // Отправка запроса на списание оборудования
-          const response = await axios.post(
-              `http://localhost:8080/api/equipment/${equipmentID}/subtract`,
-              {},
-              { withCredentials: true }
-          );
-          console.log('Ответ сервера при списании оборудования:', response.data);
-
-          if (response.data.message) {
-            alert(response.data.message);
-          } else {
-            alert('Оборудование успешно списано.');
-          }
-
-          // Обновление списка оборудования
-          this.equipmentList = this.equipmentList.filter(e => e.equipment_id !== equipmentID);
-          this.closeModal();
-        } catch (error) {
-          console.error('Ошибка при списании оборудования:', error);
-          if (error.response && error.response.data && error.response.data.error) {
-            alert(`Ошибка: ${error.response.data.error}`);
-          } else {
-            alert('Не удалось списать оборудование.');
-          }
-        }
-      } else if (this.modalType === 'deleteService') {
-        // Удаление услуги
-        await this.deleteService();
       }
     },
 
-    // Закрытие модального окна
-    closeModal() {
-      console.log('Закрытие модального окна');
-      this.showModal = false;
-      this.modalType = '';
+    // Закрытие модального окна для услуг
+    closeServiceModal() {
+      this.showServiceModal = false;
+    },
+
+    // Закрытие модального окна для оборудования
+    closeEquipmentModal() {
+      this.showEquipmentModal = false;
+    },
+
+    // Закрытие модального окна для списания оборудования
+    closeSubtractEquipmentModal() {
+      this.showSubtractEquipmentModal = false;
+    },
+
+    // Сброс формы для услуг
+    resetServiceForm() {
+      this.currentService = {};
       this.modalTitle = '';
-      this.currentItem = {};
+      this.showServiceModal = false;
     },
 
-    // Разворачивание/Скрытие оборудования
+    // Сброс формы для оборудования
+    resetEquipmentForm() {
+      this.currentEquipment = {};
+      this.equipmentModalTitle = '';
+      this.showEquipmentModal = false;
+    },
+
+    // Сброс данных списания оборудования
+    resetSubtractEquipmentForm() {
+      this.currentEquipment = {};
+      this.showSubtractEquipmentModal = false;
+    },
+
+    // Разворачивание/Скрытие оборудования для услуги
     toggleEquipment(service_id) {
       const index = this.expandedServiceIds.indexOf(service_id);
       if (index === -1) {
@@ -541,80 +604,72 @@ export default {
       }).join(', ');
     },
 
-    // Удаление услуги
-    async openDeleteServiceModal(service) {
-      console.log('Открытие модального окна для удаления услуги:', service);
-      this.modalType = 'deleteService';
-      this.modalTitle = 'Удалить услугу';
-      this.currentItem = { ...service };
-      this.showModal = true;
+    // Навигация
+    goToAdminHome() {
+      this.$router.push({ name: 'AdminHome' });
     },
-    async deleteService() {
-      try {
-        console.log('Удаление услуги:', this.currentItem);
-        const response = await axios.delete(
-            `http://localhost:8080/api/services/${this.currentItem.service_id}`,
-            { withCredentials: true }
-        );
-        console.log('Ответ сервера при удалении услуги:', response.data);
-
-        if (response.data.message) {
-          alert(response.data.message);
-        } else {
-          alert('Услуга успешно удалена.');
-        }
-
-        this.services = this.services.filter(s => s.service_id !== this.currentItem.service_id);
-        this.closeModal();
-      } catch (error) {
-        console.error('Ошибка при удалении услуги:', error);
-        if (error.response && error.response.data && error.response.data.error) {
-          alert(`Ошибка: ${error.response.data.error}`);
-        } else {
-          alert('Не удалось удалить услугу.');
-        }
-      }
+    goToEmployeesPage() {
+      this.$router.push({ name: 'ManageEmp' });
     },
-  }
+    goToOrdersPage() {
+      this.$router.push({ name: 'OrderHistory' });
+    },
+    goToMaterialsPage() {
+      this.$router.push({ name: 'MaterialsOverview' });
+    },
+    goToBookingsPage() {
+      this.$router.push({ name: 'Bookings' });
+    },
+    goToClients() {
+      this.$router.push({ name: 'Clients' })
+    },
+
+    // Метод для отображения уведомлений с помощью SweetAlert2
+    showAlert(message, type) {
+      Swal.fire({
+        title:
+            type === 'error'
+                ? 'Ошибка!'
+                : type === 'success'
+                    ? 'Успех!'
+                    : type === 'warning'
+                        ? 'Предупреждение!'
+                        : 'Внимание!',
+        text: message,
+        icon: type,
+        timer: 3000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end',
+      });
+    },
+  },
+  created() {
+    this.fetchServicesAndEquipment();
+  },
 };
 </script>
 
 <style scoped>
 .services-dashboard {
   padding: 20px;
-  max-width: 100vh;
-  max-height: 100vh;
+  max-width: 1000px;
   margin: 0 auto;
 }
 
-.card-panel {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.card {
-  background-color: #4CAF50;
-  color: #fff;
-  border-radius: 10px;
-  padding: 10px;
-  margin-bottom: 5px;
-  width: 180px;
-  max-height: 15vh;
+h2 {
   text-align: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  margin-bottom: 20px;
 }
 
 .table-section {
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+}
+
+.add-service-button,
+.add-equipment-button {
+  text-align: right;
+  margin-bottom: 10px;
 }
 
 .data-table {
@@ -624,7 +679,7 @@ export default {
 
 .data-table th,
 .data-table td {
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #ddd;
   text-align: left;
 }
@@ -640,48 +695,58 @@ export default {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  margin: 5px;
+  margin: 2px;
   transition: background-color 0.3s;
-}
-
-.btn.danger {
-  background-color: #f44336;
-}
-
-.btn.add {
-  background-color: #2196F3;
 }
 
 .btn:hover {
   background-color: #45a049;
 }
 
+.btn.danger {
+  background-color: #f44336;
+}
+
 .btn.danger:hover {
   background-color: #e53935;
+}
+
+.btn.add {
+  background-color: #2196F3;
 }
 
 .btn.add:hover {
   background-color: #1976D2;
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+.card-panel {
   display: flex;
-  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
   justify-content: center;
+  margin-top: 20px;
 }
 
-.modal {
-  background: white;
-  padding: 20px;
+.card {
+  background-color: #4CAF50;
+  color: white;
   border-radius: 10px;
-  max-width: 500px;
-  width: 100%;
+  padding: 15px;
+  width: 180px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.input-group-text {
+  width: 50px;
+  text-align: center;
 }
 
 .form-label {
@@ -691,30 +756,42 @@ export default {
   color: #333;
 }
 
-.form-input {
+.form-control {
   width: 100%;
-  padding: 10px;
+  padding: 8px 12px;
   margin-bottom: 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
   transition: border-color 0.3s;
 }
 
-.form-input:focus {
+.form-control:focus {
   border-color: #4CAF50;
   outline: none;
 }
 
-.price-input {
+.form-select {
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.input-group {
   display: flex;
   align-items: center;
 }
 
-.price-input input {
+.input-group .form-control {
   flex: 1;
 }
 
-.price-input span {
-  margin-left: 5px;
+.d-flex {
+  display: flex;
+}
+
+.justify-content-end {
+  justify-content: flex-end;
 }
 </style>

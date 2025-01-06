@@ -73,7 +73,6 @@
           <td>{{ client.Email }}</td>
           <td>
             <button @click="openEditClientModal(client)" class="btn edit">Редактировать</button>
-            <button @click="confirmDeleteClient(client)" class="btn delete">Удалить</button>
           </td>
         </tr>
         </tbody>
@@ -134,109 +133,131 @@
     </div>
 
     <!-- Модальное окно для создания клиента -->
-    <div v-if="showCreateClientModal" class="modal-overlay" @click.self="closeCreateClientModal">
-      <div class="modal">
-        <h3>Создать клиента</h3>
-        <form @submit.prevent="createClient">
-          <label>
-            ФИО:
-            <input
-                type="text"
-                v-model="newClient.FullName"
-                placeholder="Введите ФИО"
-                required
-                maxlength="80"
-            />
-          </label>
-          <label>
-            Номер телефона:
-            <input
-                type="text"
-                v-model="newClient.PhoneNumber"
-                placeholder="Введите номер телефона"
-                required
-                maxlength="11"
-                @input="formatPhoneInput"
-            />
-          </label>
-          <label>
-            Почта:
-            <input
-                type="email"
-                v-model="newClient.Email"
-                placeholder="Введите почту"
-                required
-                maxlength="100"
-            />
-          </label>
-          <div class="modal-actions">
-            <button type="submit" class="btn save">Создать</button>
-            <button type="button" @click="closeCreateClientModal" class="btn cancel">Отмена</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <b-modal
+        id="create-client-modal"
+        v-model="showCreateClientModal"
+        title="Создать клиента"
+        hide-footer
+        @hide="resetCreateClientForm"
+    >
+      <form @submit.prevent="createClient">
+        <div class="mb-3">
+          <label for="clientFullName" class="form-label">ФИО:</label>
+          <input
+              id="clientFullName"
+              type="text"
+              v-model="newClient.FullName"
+              placeholder="Введите ФИО"
+              required
+              maxlength="80"
+              class="form-control"
+          />
+        </div>
+        <div class="mb-3">
+          <label for="clientPhone" class="form-label">Номер телефона:</label>
+          <input
+              id="clientPhone"
+              type="text"
+              v-model="newClient.PhoneNumber"
+              placeholder="Введите номер телефона"
+              required
+              maxlength="11"
+              @input="formatPhoneInput"
+              class="form-control"
+          />
+        </div>
+        <div class="mb-3">
+          <label for="clientEmail" class="form-label">Почта:</label>
+          <input
+              id="clientEmail"
+              type="email"
+              v-model="newClient.Email"
+              placeholder="Введите почту"
+              required
+              maxlength="100"
+              class="form-control"
+          />
+        </div>
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary me-2">Создать</button>
+          <button type="button" @click="closeCreateClientModal" class="btn btn-secondary">Отмена</button>
+        </div>
+      </form>
+    </b-modal>
 
     <!-- Модальное окно для редактирования клиента -->
-    <div v-if="showEditClientModal" class="modal-overlay" @click.self="closeEditClientModal">
-      <div class="modal">
-        <h3>Редактировать клиента</h3>
-        <form @submit.prevent="updateClient">
-          <label>
-            ФИО:
-            <input
-                type="text"
-                v-model="editClient.FullName"
-                placeholder="Введите ФИО"
-                required
-                maxlength="80"
-            />
-          </label>
-          <label>
-            Номер телефона:
-            <input
-                type="text"
-                v-model="editClient.PhoneNumber"
-                placeholder="Введите номер телефона"
-                required
-                maxlength="11"
-                @input="formatPhoneInputEdit"
-            />
-          </label>
-          <label>
-            Почта:
-            <input
-                type="email"
-                v-model="editClient.Email"
-                placeholder="Введите почту"
-                required
-                maxlength="100"
-            />
-          </label>
-          <div class="modal-actions">
-            <button type="submit" class="btn save">Сохранить</button>
-            <button type="button" @click="closeEditClientModal" class="btn cancel">Отмена</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <b-modal
+        id="edit-client-modal"
+        v-model="showEditClientModal"
+        title="Редактировать клиента"
+        hide-footer
+        @hide="resetEditClientForm"
+    >
+      <form @submit.prevent="updateClient">
+        <div class="mb-3">
+          <label for="editClientFullName" class="form-label">ФИО:</label>
+          <input
+              id="editClientFullName"
+              type="text"
+              v-model="editClient.FullName"
+              placeholder="Введите ФИО"
+              required
+              maxlength="80"
+              class="form-control"
+          />
+        </div>
+        <div class="mb-3">
+          <label for="editClientPhone" class="form-label">Номер телефона:</label>
+          <input
+              id="editClientPhone"
+              type="text"
+              v-model="editClient.PhoneNumber"
+              placeholder="Введите номер телефона"
+              required
+              maxlength="11"
+              @input="formatPhoneInputEdit"
+              class="form-control"
+          />
+        </div>
+        <div class="mb-3">
+          <label for="editClientEmail" class="form-label">Почта:</label>
+          <input
+              id="editClientEmail"
+              type="email"
+              v-model="editClient.Email"
+              placeholder="Введите почту"
+              required
+              maxlength="100"
+              class="form-control"
+          />
+        </div>
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+          <button type="button" @click="closeEditClientModal" class="btn btn-secondary">Отмена</button>
+        </div>
+      </form>
+    </b-modal>
 
     <!-- Модальное окно подтверждения удаления клиента -->
-    <div v-if="showDeleteConfirmModal" class="modal-overlay" @click.self="closeDeleteConfirmModal">
-      <div class="modal">
-        <h3>Подтверждение удаления</h3>
-        <p>Вы уверены, что хотите удалить клиента <strong>{{ deleteClient.FullName }}</strong>?</p>
-        <div class="modal-actions">
-          <button @click="deleteClientConfirmed" class="btn delete">Удалить</button>
-          <button @click="closeDeleteConfirmModal" class="btn cancel">Отмена</button>
-        </div>
+    <b-modal
+        id="delete-confirm-modal"
+        v-model="showDeleteConfirmModal"
+        title="Подтверждение удаления"
+        hide-footer
+        @hide="resetDeleteConfirmModal"
+    >
+      <p>Вы уверены, что хотите удалить клиента <strong>{{ deleteClient.FullName }}</strong>?</p>
+      <div class="d-flex justify-content-end">
+        <button @click="deleteClientConfirmed" class="btn btn-danger me-2">Удалить</button>
+        <button @click="closeDeleteConfirmModal" class="btn btn-secondary">Отмена</button>
       </div>
-    </div>
+    </b-modal>
   </div>
 </template>
 
 <script>
 import axios from 'axios';
+import Swal from 'sweetalert2'; // Импортируем SweetAlert2
 
 export default {
   name: 'AdminClientsDashboard',
@@ -329,11 +350,27 @@ export default {
           this.calculateTotalPages();
         } else {
           console.error('Некорректный формат данных:', response.data);
-          alert('Ошибка загрузки клиентов: Некорректный формат данных.');
+          Swal.fire({
+            title: 'Ошибка!',
+            text: 'Ошибка загрузки клиентов: Некорректный формат данных.',
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         }
       } catch (error) {
         console.error('Ошибка при загрузке клиентов:', error);
-        alert('Не удалось загрузить клиентов.');
+        Swal.fire({
+          title: 'Ошибка!',
+          text: 'Не удалось загрузить клиентов.',
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
       }
     },
     formatPhoneInput() {
@@ -361,7 +398,15 @@ export default {
     },
     async createClient() {
       if (!/^7\d{10}$/.test(this.newClient.PhoneNumber)) {
-        alert('Номер телефона должен начинаться с 7 и содержать 11 цифр.');
+        Swal.fire({
+          title: 'Ошибка!',
+          text: 'Номер телефона должен начинаться с 7 и содержать 11 цифр.',
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
         return;
       }
 
@@ -376,18 +421,50 @@ export default {
         });
 
         if (response.data.message) {
-          alert(response.data.message);
+          Swal.fire({
+            title: 'Успех!',
+            text: response.data.message,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
           this.closeCreateClientModal();
           this.fetchClients();
         } else if (response.data.error) {
-          alert(response.data.error);
+          Swal.fire({
+            title: 'Ошибка!',
+            text: response.data.error,
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         }
       } catch (error) {
         console.error('Ошибка при создании клиента:', error);
         if (error.response && error.response.data) {
-          alert(error.response.data.error || error.response.data.message || 'Неизвестная ошибка.');
+          Swal.fire({
+            title: 'Ошибка!',
+            text: error.response.data.error || error.response.data.message || 'Неизвестная ошибка.',
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         } else {
-          alert('Не удалось создать клиента.');
+          Swal.fire({
+            title: 'Ошибка!',
+            text: 'Не удалось создать клиента.',
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         }
       }
     },
@@ -397,7 +474,15 @@ export default {
     },
     async updateClient() {
       if (!/^7\d{10}$/.test(this.editClient.PhoneNumber)) {
-        alert('Номер телефона должен начинаться с 7 и содержать 11 цифр.');
+        Swal.fire({
+          title: 'Ошибка!',
+          text: 'Номер телефона должен начинаться с 7 и содержать 11 цифр.',
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
         return;
       }
 
@@ -412,18 +497,50 @@ export default {
         });
 
         if (response.data.message) {
-          alert(response.data.message);
+          Swal.fire({
+            title: 'Успех!',
+            text: response.data.message,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
           this.closeEditClientModal();
           this.fetchClients();
         } else if (response.data.error) {
-          alert(response.data.error);
+          Swal.fire({
+            title: 'Ошибка!',
+            text: response.data.error,
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         }
       } catch (error) {
         console.error('Ошибка при обновлении клиента:', error);
         if (error.response && error.response.data) {
-          alert(error.response.data.error || error.response.data.message || 'Неизвестная ошибка.');
+          Swal.fire({
+            title: 'Ошибка!',
+            text: error.response.data.error || error.response.data.message || 'Неизвестная ошибка.',
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         } else {
-          alert('Не удалось обновить клиента.');
+          Swal.fire({
+            title: 'Ошибка!',
+            text: 'Не удалось обновить клиента.',
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         }
       }
     },
@@ -438,18 +555,50 @@ export default {
         });
 
         if (response.data.message) {
-          alert(response.data.message);
+          Swal.fire({
+            title: 'Успех!',
+            text: response.data.message,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
           this.closeDeleteConfirmModal();
           this.fetchClients();
         } else if (response.data.error) {
-          alert(response.data.error);
+          Swal.fire({
+            title: 'Ошибка!',
+            text: response.data.error,
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         }
       } catch (error) {
         console.error('Ошибка при удалении клиента:', error);
         if (error.response && error.response.data) {
-          alert(error.response.data.error || error.response.data.message || 'Неизвестная ошибка.');
+          Swal.fire({
+            title: 'Ошибка!',
+            text: error.response.data.error || error.response.data.message || 'Неизвестная ошибка.',
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         } else {
-          alert('Не удалось удалить клиента.');
+          Swal.fire({
+            title: 'Ошибка!',
+            text: 'Не удалось удалить клиента.',
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         }
       }
     },
@@ -504,6 +653,17 @@ export default {
         Email: ''
       };
     },
+    resetCreateClientForm() {
+      this.newClient = {
+        FullName: '',
+        PhoneNumber: '',
+        Email: ''
+      };
+    },
+    openEditClientModal(client) {
+      this.editClient = { ...client };
+      this.showEditClientModal = true;
+    },
     closeEditClientModal() {
       this.showEditClientModal = false;
       this.editClient = {
@@ -512,6 +672,18 @@ export default {
         PhoneNumber: '',
         Email: ''
       };
+    },
+    resetEditClientForm() {
+      this.editClient = {
+        id: null,
+        FullName: '',
+        PhoneNumber: '',
+        Email: ''
+      };
+    },
+    confirmDeleteClient(client) {
+      this.deleteClient = client;
+      this.showDeleteConfirmModal = true;
     },
     closeDeleteConfirmModal() {
       this.showDeleteConfirmModal = false;
@@ -744,82 +916,32 @@ h2 {
   margin-bottom: 10px;
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal {
-  background-color: white;
-  padding: 25px;
-  border-radius: 8px;
-  width: 400px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.modal h3 {
-  margin-bottom: 15px;
+.form-label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
   color: #333;
 }
 
-.modal label {
-  display: block;
-  margin-bottom: 10px;
-  color: #555;
-}
-
-.modal input[type="text"],
-.modal input[type="email"],
-.modal input[type="date"],
-.modal select {
+.form-control {
   width: 100%;
-  padding: 12px;
-  margin-top: 5px;
-  box-sizing: border-box;
-  border: 1px solid #ccc;
+  padding: 8px 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 16px;
-  transition: border-color 0.3s ease-in-out;
+  transition: border-color 0.3s;
 }
 
-.modal input[type="text"]:focus,
-.modal input[type="email"]:focus,
-.modal input[type="date"]:focus,
-.modal select:focus {
-  border-color: #0056b3;
+.form-control:focus {
+  border-color: #4CAF50;
   outline: none;
 }
 
-.modal .modal-actions {
+.d-flex {
   display: flex;
+}
+
+.justify-content-end {
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.modal .btn.save {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.modal .btn.save:hover {
-  background-color: #45a049;
-}
-
-.modal .btn.cancel {
-  background-color: #F44336;
-  color: white;
-}
-
-.modal .btn.cancel:hover {
-  background-color: #D32F2F;
 }
 </style>

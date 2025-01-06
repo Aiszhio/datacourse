@@ -13,7 +13,7 @@
           <th>Имя фотографа</th>
           <th>Название услуг</th>
           <th>Дата оформления</th>
-          <th>Дата получения</th>
+          <th>Дата завершения</th>
         </tr>
         </thead>
         <tbody>
@@ -103,7 +103,15 @@ export default {
         this.orders = data;
       } catch (error) {
         console.error("Ошибка:", error.message);
-        alert("Не удалось загрузить историю заказов.");
+        this.$swal.fire({
+          title: 'Ошибка!',
+          text: "Не удалось загрузить историю заказов.",
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
       } finally {
         this.loading = false;
       }
@@ -122,12 +130,28 @@ export default {
         this.bookerFullName = userData.name || '';
       } catch (error) {
         console.error("Ошибка при получении данных пользователя:", error.message);
-        alert("Не удалось получить информацию о пользователе. Пожалуйста, попробуйте снова позже.");
+        this.$swal.fire({
+          title: 'Ошибка!',
+          text: "Не удалось получить информацию о пользователе. Пожалуйста, попробуйте снова позже.",
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
       }
     },
     async submitBooking() {
       if (!this.bookingDate) {
-        alert("Пожалуйста, выберите дату бронирования.");
+        this.$swal.fire({
+          title: 'Предупреждение',
+          text: "Пожалуйста, выберите дату бронирования.",
+          icon: 'warning',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
         return;
       }
 
@@ -154,13 +178,29 @@ export default {
           throw new Error(result.error || "Не удалось забронировать время.");
         }
 
-        // Отображение имени сотрудника в alert
-        alert(`Вы успешно сделали бронь!`);
+        // Отображение успешного бронирования
+        this.$swal.fire({
+          title: 'Успех!',
+          text: "Вы успешно сделали бронь!",
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
 
         this.resetBookingForm();
       } catch (error) {
         console.error("Ошибка при бронировании:", error.message);
-        alert(error.message || "Не удалось забронировать время.");
+        this.$swal.fire({
+          title: 'Ошибка!',
+          text: error.message || "Не удалось забронировать время.",
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
       }
     },
     resetBookingForm() {

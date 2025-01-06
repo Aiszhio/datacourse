@@ -2,6 +2,7 @@
   <div class="manage-employees">
     <h2>Управление сотрудниками</h2>
 
+    <!-- Секция добавления нового сотрудника -->
     <div class="add-employee-section">
       <h3>Добавить сотрудника</h3>
       <form @submit.prevent="addEmployee">
@@ -64,6 +65,7 @@
       </form>
     </div>
 
+    <!-- Секция списка сотрудников -->
     <div class="employee-list-section">
       <h3>Список сотрудников</h3>
 
@@ -154,84 +156,96 @@
       </button>
     </div>
 
-    <div v-if="showEditEmployeeModal" class="modal-overlay" @click.self="closeEditEmployeeModal">
-      <div class="modal">
-        <h3>Редактировать сотрудника</h3>
+    <!-- Модальное окно редактирования сотрудника с использованием BootstrapVue3 -->
+    <b-modal
+        id="edit-employee-modal"
+        v-model="showEditEmployeeModal"
+        title="Редактировать сотрудника"
+        hide-footer
+        @hide="resetCurrentEmployee"
+    >
+      <form @submit.prevent="saveEmployee">
+        <label for="edit-name">ФИО</label>
+        <input
+            id="edit-name"
+            type="text"
+            v-model="currentEmployee.name"
+            required
+            maxlength="80"
+            class="form-control"
+        />
 
-        <form @submit.prevent="saveEmployee">
-          <label for="edit-name">ФИО</label>
-          <input
-              id="edit-name"
-              type="text"
-              v-model="currentEmployee.name"
-              required
-              maxlength="80"
-          />
+        <label for="edit-position">Должность</label>
+        <select
+            class="position form-control"
+            id="edit-position"
+            v-model="currentEmployee.position"
+            required
+        >
+          <option disabled value="">Выберите должность</option>
+          <option>Фотограф</option>
+          <option>Администратор</option>
+        </select>
 
-          <label for="edit-position">Должность</label>
-          <select
-              class="position"
-              id="edit-position"
-              v-model="currentEmployee.position"
-              required
-          >
-            <option disabled value="">Выберите должность</option>
-            <option>Фотограф</option>
-            <option>Администратор</option>
-          </select>
+        <label for="edit-hireDate">Дата оформления</label>
+        <input
+            id="edit-hireDate"
+            type="date"
+            v-model="currentEmployee.hireDate"
+            :max="todayDate"
+            required
+            class="form-control"
+        />
 
-          <label for="edit-hireDate">Дата оформления</label>
-          <input
-              id="edit-hireDate"
-              type="date"
-              v-model="currentEmployee.hireDate"
-              :max="todayDate"
-              required
-          />
+        <label for="edit-birthDate">День рождения</label>
+        <input
+            id="edit-birthDate"
+            type="date"
+            v-model="currentEmployee.birthDate"
+            :max="maxBirthDate"
+            required
+            class="form-control"
+        />
 
-          <label for="edit-birthDate">День рождения</label>
-          <input
-              id="edit-birthDate"
-              type="date"
-              v-model="currentEmployee.birthDate"
-              :max="maxBirthDate"
-              required
-          />
+        <label for="edit-passport">Паспортные данные</label>
+        <input
+            id="edit-passport"
+            type="text"
+            v-model="currentEmployee.passport_data"
+            required
+            maxlength="10"
+            class="form-control"
+        />
 
-          <label for="edit-passport">Паспортные данные</label>
-          <input
-              id="edit-passport"
-              type="text"
-              v-model="formattedEditPassportData"
-              required
-              maxlength="10"
-          />
+        <label for="edit-phone">Номер телефона</label>
+        <input
+            id="edit-phone"
+            type="tel"
+            v-model="currentEmployee.phone_number"
+            required
+            maxlength="12"
+            class="form-control"
+        />
 
-          <label for="edit-phone">Номер телефона</label>
-          <input
-              id="edit-phone"
-              type="tel"
-              v-model="formattedEditPhoneNumber"
-              required
-              maxlength="12"
-          />
+        <label for="edit-status">Статус</label>
+        <select
+            id="edit-status"
+            v-model="currentEmployee.status"
+            required
+            class="form-control"
+        >
+          <option value="Работает">Работает</option>
+          <option value="Уволен">Уволен</option>
+        </select>
 
-          <label for="edit-status">Статус</label>
-          <select
-              id="edit-status"
-              v-model="currentEmployee.status"
-              required
-          >
-            <option value="Работает">Работает</option>
-            <option value="Уволен">Уволен</option>
-          </select>
+        <div class="mt-3 d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary mr-2">Сохранить</button>
+          <button type="button" @click="closeEditEmployeeModal" class="btn btn-danger">Отмена</button>
+        </div>
+      </form>
+    </b-modal>
 
-          <button type="submit" class="btn">Сохранить</button>
-          <button type="button" @click="closeEditEmployeeModal" class="btn danger">Отмена</button>
-        </form>
-      </div>
-    </div>
-
+    <!-- Панель навигации -->
     <div class="card-panel">
       <div class="card" @click="goToAdminHome">
         <h4>На главную</h4>
@@ -306,6 +320,7 @@ export default {
     };
   },
   computed: {
+    // Отсортированные сотрудники
     sortedEmployees() {
       if (!this.sortKey) {
         return this.employees;
@@ -359,29 +374,7 @@ export default {
       },
       set(value) {
         // Удаляем все нецифровые символы
-        this.newEmployee.passport_data = value.replace(/\D/g, '').slice(0, 10);
-      }
-    },
-    // Вычисляемое свойство для форматирования номера телефона при редактировании
-    formattedEditPhoneNumber: {
-      get() {
-        const raw = this.currentEmployee.phone_number;
-        if (!raw) return '';
-        return raw.replace(/(\d)(\d{3})(\d{3})(\d{2})(\d{2})/, '$1-$2-$3-$4-$5');
-      },
-      set(value) {
-        this.currentEmployee.phone_number = value.replace(/\D/g, '').slice(0, 11);
-      }
-    },
-    // Вычисляемое свойство для форматирования паспортных данных при редактировании
-    formattedEditPassportData: {
-      get() {
-        const raw = this.currentEmployee.passport_data;
-        if (!raw) return '';
-        return raw.replace(/(\d{4})(\d{6})/, '$1 $2');
-      },
-      set(value) {
-        this.currentEmployee.passport_data = value.replace(/\D/g, '').slice(0, 10);
+        this.newEmployee.passport_data = value.replace(/\D/g, '').slice(0, 11);
       }
     }
   },
@@ -422,13 +415,13 @@ export default {
 
         const data = await response.json();
 
-        // Измененный маппинг: используем employee_id вместо id и сохраняем даты в ISO8601
+        // Изменённый маппинг: используем employee_id вместо id и сохраняем даты в формат для input[type="date"]
         this.employees = data.employees.map(employee => ({
           id: employee.employee_id,
           name: employee.full_name,
           position: employee.position,
-          hireDate: dayjs(employee.hire_date).toISOString(), // ISO8601
-          birthDate: dayjs(employee.birth_date).toISOString(), // ISO8601
+          hireDate: dayjs(employee.hire_date).format('YYYY-MM-DD'), // Формат для input[type="date"]
+          birthDate: dayjs(employee.birth_date).format('YYYY-MM-DD'), // Формат для input[type="date"]
           passport_data: employee.passport_data,
           phone_number: employee.phone_number,
           status: employee.status
@@ -436,7 +429,7 @@ export default {
 
       } catch (error) {
         console.error('Ошибка при загрузке сотрудников:', error.message);
-        alert('Не удалось загрузить сотрудников.');
+        this.showAlert('Не удалось загрузить сотрудников.', 'error');
       } finally {
         this.loadingEmployees = false;
       }
@@ -450,7 +443,7 @@ export default {
       const birthDateObj = dayjs(birth_date);
       const today = dayjs().subtract(18, 'year');
       if (birthDateObj.isAfter(today)) {
-        alert('Сотрудник должен быть старше 18 лет.');
+        this.showAlert('Сотрудник должен быть старше 18 лет.', 'warning');
         return;
       }
 
@@ -498,15 +491,15 @@ export default {
           id: addedEmployee.worker.employee_id,
           name: addedEmployee.worker.full_name,
           position: addedEmployee.worker.position,
-          hireDate: dayjs(addedEmployee.worker.hire_date).toISOString(), // ISO8601
-          birthDate: dayjs(addedEmployee.worker.birth_date).toISOString(), // ISO8601
+          hireDate: dayjs(addedEmployee.worker.hire_date).format('YYYY-MM-DD'), // Формат для input[type="date"]
+          birthDate: dayjs(addedEmployee.worker.birth_date).format('YYYY-MM-DD'), // Формат для input[type="date"]
           passport_data: addedEmployee.worker.passport_data,
           phone_number: addedEmployee.worker.phone_number,
           status: addedEmployee.worker.status
         });
 
         // Уведомление об успешном добавлении
-        alert('Сотрудник успешно добавлен!');
+        this.showAlert('Сотрудник успешно добавлен!', 'success');
 
         // Сброс формы
         this.newEmployee = {
@@ -520,65 +513,82 @@ export default {
         };
       } catch (error) {
         console.error('Ошибка при добавлении сотрудника:', error.message);
-        alert(`Не удалось добавить сотрудника: ${error.message}`);
+        this.showAlert(`Не удалось добавить сотрудника: ${error.message}`, 'error');
       }
     },
 
     // Метод для увольнения сотрудника
     async fireEmployee(id) {
       if (!id) {
-        alert('Невозможно уволить сотрудника: ID отсутствует.');
+        this.showAlert('Невозможно уволить сотрудника: ID отсутствует.', 'error');
         return;
       }
 
       const employee = this.employees.find(emp => emp.id === id);
       if (!employee) {
-        alert('Сотрудник не найден.');
+        this.showAlert('Сотрудник не найден.', 'error');
         return;
       }
 
       if (employee.status === 'Уволен') {
-        alert('Сотрудник уже уволен.');
+        this.showAlert('Сотрудник уже уволен.', 'info');
         return;
       }
 
-      if (!confirm(`Вы уверены, что хотите уволить сотрудника ${employee.name}?`)) {
-        return;
-      }
+      // Используем SweetAlert2 для подтверждения действия
+      const result = await this.$swal.fire({
+        title: 'Вы уверены?',
+        text: `Вы хотите уволить сотрудника ${employee.name}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Да, уволить',
+        cancelButtonText: 'Отмена',
+        reverseButtons: true
+      });
 
-      try {
-        const response = await fetch(`http://localhost:8080/api/employees/${id}/fire`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
-        });
+      if (result.isConfirmed) {
+        try {
+          const response = await fetch(`http://localhost:8080/api/employees/${id}/fire`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+          });
 
-        console.log('Ответ сервера (увольнение):', response);
+          console.log('Ответ сервера (увольнение):', response);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Ошибка при увольнении сотрудника');
-        }
-
-        // Обновление статуса сотрудника в локальном списке
-        this.employees = this.employees.map(emp => {
-          if (emp.id === id) {
-            return { ...emp, status: 'Уволен' };
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Ошибка при увольнении сотрудника');
           }
-          return emp;
-        });
 
-        alert(`Сотрудник ${employee.name} успешно уволен.`);
-      } catch (error) {
-        console.error('Ошибка при увольнении сотрудника:', error.message);
-        alert(`Не удалось уволить сотрудника: ${error.message}`);
+          // Обновление статуса сотрудника в локальном списке
+          this.employees = this.employees.map(emp => {
+            if (emp.id === id) {
+              return { ...emp, status: 'Уволен' };
+            }
+            return emp;
+          });
+
+          this.showAlert(`Сотрудник ${employee.name} успешно уволен.`, 'success');
+        } catch (error) {
+          console.error('Ошибка при увольнении сотрудника:', error.message);
+          this.showAlert(`Не удалось уволить сотрудника: ${error.message}`, 'error');
+        }
+      } else if (result.dismiss === this.$swal.DismissReason.cancel) {
+        this.showAlert('Увольнение отменено.', 'info');
       }
     },
 
     // Метод для открытия модального окна редактирования сотрудника
     openEditEmployeeModal(employee) {
+      console.log('openEditEmployeeModal вызван с сотрудником:', employee);
+      if (!employee) {
+        this.showAlert('Невозможно открыть модальное окно: данные сотрудника отсутствуют.', 'error');
+        return;
+      }
+
       // Копируем данные сотрудника с преобразованием формата даты
       this.currentEmployee = {
         ...employee,
@@ -586,19 +596,19 @@ export default {
         birthDate: this.formatDateForDateInput(employee.birthDate)
       };
 
+      console.log('currentEmployee установлен:', this.currentEmployee);
+
       this.showEditEmployeeModal = true;
-    },
-    // В методах или computed свойствах
-    formatDateForDateInput(dateString) {
-      if (!dateString) return '';
-      const date = dayjs(dateString);
-      if (!date.isValid()) return ''; // Проверка на валидность даты
-      return date.toISOString(); // Возвращает "YYYY-MM-DDTHH:mm:ssZ"
     },
 
     // Метод для закрытия модального окна редактирования сотрудника
     closeEditEmployeeModal() {
       this.showEditEmployeeModal = false;
+      this.resetCurrentEmployee();
+    },
+
+    // Метод для сброса данных текущего сотрудника
+    resetCurrentEmployee() {
       this.currentEmployee = {
         id: '',
         name: '',
@@ -619,7 +629,7 @@ export default {
       const birthDateObj = dayjs(birthDate);
       const today = dayjs().subtract(18, 'year');
       if (birthDateObj.isAfter(today)) {
-        alert('Сотрудник должен быть старше 18 лет.');
+        this.showAlert('Сотрудник должен быть старше 18 лет.', 'warning');
         return;
       }
 
@@ -664,20 +674,28 @@ export default {
             id: updatedEmployee.worker.employee_id,
             name: updatedEmployee.worker.full_name,
             position: updatedEmployee.worker.position,
-            hireDate: dayjs(updatedEmployee.worker.hire_date).toISOString(), // ISO8601
-            birthDate: dayjs(updatedEmployee.worker.birth_date).toISOString(), // ISO8601
+            hireDate: dayjs(updatedEmployee.worker.hire_date).format('YYYY-MM-DD'), // Формат для input[type="date"]
+            birthDate: dayjs(updatedEmployee.worker.birth_date).format('YYYY-MM-DD'), // Формат для input[type="date"]
             passport_data: updatedEmployee.worker.passport_data,
             phone_number: updatedEmployee.worker.phone_number,
             status: updatedEmployee.worker.status
           };
         }
 
-        alert(`Данные сотрудника ${updatedEmployee.worker.full_name} успешно обновлены.`);
+        this.showAlert(`Данные сотрудника ${updatedEmployee.worker.full_name} успешно обновлены.`, 'success');
         this.closeEditEmployeeModal();
       } catch (error) {
         console.error('Ошибка при обновлении сотрудника:', error.message);
-        alert(`Не удалось обновить сотрудника: ${error.message}`);
+        this.showAlert(`Не удалось обновить сотрудника: ${error.message}`, 'error');
       }
+    },
+
+    // Метод для форматирования даты для отображения в input[type="date"]
+    formatDateForDateInput(dateString) {
+      if (!dateString) return '';
+      const date = dayjs(dateString);
+      if (!date.isValid()) return ''; // Проверка на валидность даты
+      return date.format('YYYY-MM-DD'); // Возвращает "YYYY-MM-DD"
     },
 
     // Метод для форматирования даты для отображения пользователю
@@ -695,6 +713,26 @@ export default {
     // Метод для загрузки дополнительных сотрудников
     loadMoreEmployees() {
       this.displayCountEmployees += 10;
+    },
+
+    // Вспомогательный метод для отображения уведомлений
+    showAlert(message, type) {
+      this.$swal.fire({
+        title:
+            type === 'error'
+                ? 'Ошибка!'
+                : type === 'success'
+                    ? 'Успех!'
+                    : type === 'warning'
+                        ? 'Предупреждение!'
+                        : 'Внимание!',
+        text: message,
+        icon: type,
+        timer: 3000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end',
+      });
     },
 
     // Методы навигации по маршрутам
@@ -728,7 +766,7 @@ export default {
   padding: 20px;
   margin: 0 auto;
   max-width: 1500px;
-  max-height: 100vh;
+  /* Убрали max-height: 100vh, чтобы модальное окно не было ограничено высотой контейнера */
 }
 
 h2 {
@@ -816,26 +854,24 @@ table td {
   background-color: #45a049;
 }
 
+.btn:disabled {
+  background-color: #a5d6a7;
+  cursor: not-allowed;
+}
+
+/* Удаляем кастомные стили модального окна, т.к. используем BootstrapVue3 */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  /* Удалены или закомментированы стили */
 }
 
 .modal {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+  /* Удалены или закомментированы стили */
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
 }
 
 .card-panel {
@@ -862,5 +898,25 @@ table td {
 .card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.loading {
+  text-align: center;
+  color: #555555;
+  font-size: 1.2em;
+  margin-top: 10px;
+}
+
+.no-employees {
+  text-align: center;
+  color: #888888;
+  font-style: italic;
+  margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .filters-container {
+    flex-direction: column;
+  }
 }
 </style>

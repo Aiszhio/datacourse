@@ -63,7 +63,7 @@
             </button>
           </th>
           <th>
-            Дата завершения
+            Дата выдачи
           </th>
         </tr>
         </thead>
@@ -72,7 +72,7 @@
           <td>{{ order.serviceName }}</td>
           <td>{{ formatDate(order.orderDate) }}</td>
           <td>{{ formatDate(order.receiptDate) }}</td>
-          <td>{{ formatDate(order.remainingTime) }}</td>
+          <td>{{ formatDate(order.issueDate) || 'Не выдано' }}</td> <!-- Изменено -->
         </tr>
         </tbody>
       </table>
@@ -162,7 +162,7 @@
             </button>
           </th>
           <th>
-            Дата завершения
+            Дата выдачи
           </th>
         </tr>
         </thead>
@@ -172,7 +172,7 @@
           <td>{{ order.serviceName }}</td>
           <td>{{ formatDate(order.orderDate) }}</td>
           <td>{{ formatDate(order.receiptDate) }}</td>
-          <td>{{ formatDate(order.remainingTime) }}</td>
+          <td>{{ formatDate(order.issueDate) || 'Не выдано' }}</td> <!-- Изменено -->
         </tr>
         </tbody>
       </table>
@@ -189,7 +189,6 @@
     </div>
   </div>
 </template>
-
 <script>
 export default {
   name: 'Worker',
@@ -354,7 +353,7 @@ export default {
           serviceName: order.serviceName,
           orderDate: order.orderDate,
           receiptDate: order.adjustedReceiptDate,
-          remainingTime: order.remainingTime || '' // Добавлено для pastOrders
+          issueDate: order.issueDate, // Добавлено для pastOrders
         }));
 
         // Маппинг будущих заказов
@@ -367,7 +366,7 @@ export default {
             serviceName: order.serviceName,
             orderDate: order.orderDate,
             receiptDate: order.adjustedReceiptDate,
-            remainingTime: order.remainingTime || '' // Теперь это строка типа "2024-12-17T10:00:00Z"
+            issueDate: order.issueDate, // Добавлено для futureOrders
           }));
         } else {
           throw new Error('Некорректный формат данных для заказов: futureOrders не массив и не null');
@@ -440,10 +439,6 @@ export default {
 
       return config.order === 'asc' ? '↑' : '↓';
     },
-    // Функция для форматирования оставшегося времени как даты
-    formatRemainingTime(dateString, isPast = false) {
-      return this.formatDate(dateString);
-    }
   }
 };
 </script>
@@ -452,22 +447,15 @@ export default {
 .worker-dashboard {
   padding: 20px;
   margin: 0 auto;
+  max-width: 900px;
   max-height: 100vh;
   background-color: #ffffff;
-
-  border-left: 1px solid #cccccc;
-  border-right: 1px solid #cccccc;
-
-  box-shadow:
-      2px 0 8px rgba(0, 0, 0, 0.1),
-      -2px 0 8px rgba(0, 0, 0, 0.1);
-
-
+  border: 1px solid #cccccc;
   border-radius: 8px;
-
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1),
+  -2px 0 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-
   width: 90%;
 }
 
@@ -483,12 +471,7 @@ export default {
   margin: 20px 0;
   border-radius: 10px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-
-  /* Позволяем секциям растягиваться */
-  flex: 1 1 auto;
-
-  /* Избегаем внутренней прокрутки */
-  overflow: visible;
+  overflow-x: auto;
 }
 
 .orders-section h3 {
@@ -527,8 +510,6 @@ export default {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 15px;
-
-  /* Делаем таблицу гибкой */
   table-layout: fixed;
 }
 
@@ -537,12 +518,7 @@ export default {
   padding: 12px 15px;
   border: 1px solid #dddddd;
   text-align: left;
-
-  /* Позволяем содержимому переноситься */
   word-wrap: break-word;
-  word-break: break-all;
-
-  /* Дополнительные стили для предотвращения переполнения */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: normal;
@@ -613,14 +589,5 @@ export default {
     flex-direction: column;
   }
 }
-
-.orders-section {
-  background-color: #f9f9f9;
-  padding: 25px 20px;
-  margin: 20px 0;
-  border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  height: 40vh;
-  overflow-x: auto; /* Добавляет горизонтальную прокрутку при необходимости */
-}
 </style>
+

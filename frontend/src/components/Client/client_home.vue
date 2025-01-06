@@ -217,7 +217,7 @@ export default {
   color: white;
   border-radius: 10px;
   padding: 15px;
-  width: 180px;
+  width: 380px;
   text-align: center;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   cursor: pointer;

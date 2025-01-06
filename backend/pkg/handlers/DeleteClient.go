@@ -11,19 +11,15 @@ import (
 	"gorm.io/gorm"
 )
 
-// Предполагается, что у вас есть структура Order, которая отражает таблицу orders
 type Order struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	ClientID    uint      `json:"client_id"`
 	ServiceName string    `json:"service_name"`
 	OrderDate   time.Time `json:"order_date"`
-	// Другие поля заказа
 }
 
-// Функция DeleteClient обрабатывает удаление клиента
 func DeleteClient(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		// Получаем параметр "id" из URL
 		idStr := c.Params("id")
 		if idStr == "" {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -31,7 +27,6 @@ func DeleteClient(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		// Конвертируем "id" из строки в целое число
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -39,7 +34,6 @@ func DeleteClient(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		// Получаем существующего клиента из базы данных
 		var existingClient db2.Client
 		if err = db.First(&existingClient, id).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -52,10 +46,8 @@ func DeleteClient(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		// Получаем текущее время в UTC
 		nowUtc := time.Now().UTC()
 
-		// Проверяем наличие не закрытых заказов у клиента
 		var upcomingOrders int64
 		err = db.Table("orders").
 			Joins("INNER JOIN services ON orders.service_name = services.name").
@@ -74,14 +66,25 @@ func DeleteClient(db *gorm.DB) fiber.Handler {
 			})
 		}
 
-		// Удаляем клиента из базы данных
+		var upcomingBookings int64
+		if err = db.Table("bookings").Where("client_id = ? AND booking_time > ?", id, nowUtc).Count(&upcomingBookings).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Ошибка при поиске бронирований",
+			})
+		}
+
+		if upcomingBookings > 0 {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "У пользователя есть активные брони",
+			})
+		}
+
 		if err = db.Delete(&existingClient).Error; err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Ошибка при удалении клиента",
 			})
 		}
 
-		// Возвращаем успешный ответ
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"message": "Клиент успешно удален!",
 		})

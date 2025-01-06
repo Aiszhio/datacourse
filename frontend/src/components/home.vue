@@ -1,73 +1,111 @@
+<!-- src/components/Auth.vue -->
 <template>
-  <div class="auth-container">
-    <h2>{{ isRegistering ? 'Регистрация' : 'Вход в аккаунт' }}</h2>
+  <div class="d-flex justify-content-center align-items-center min-vh-100">
+    <b-card class="p-4 shadow auth-card">
+      <h2 class="text-center mb-4">{{ isRegistering ? 'Регистрация' : 'Вход в аккаунт' }}</h2>
 
-    <form @submit.prevent="isRegistering ? register() : login()">
-      <!-- Форма регистрации -->
-      <div v-if="isRegistering">
-        <input
-            type="text"
-            v-model="fullName"
-            placeholder="Полное имя"
-            required
-            :class="{'invalid': !isValidFullName(fullName)}"
-        />
-        <input
-            type="tel"
-            v-model="phone"
-            placeholder="Номер телефона"
-            required
-            v-mask="'7(###) ###-####'"
-            :class="{'invalid': !isValidPhone(phone)}"
-        />
-        <input
-            type="email"
-            v-model="filters.email"
-            placeholder="Электронная почта"
-            required
-            :class="{'invalid': !isValidEmail(filters.email)}"
-        />
+      <b-form @submit.prevent="isRegistering ? register() : login()" novalidate>
+        <!-- Форма регистрации -->
+        <div v-if="isRegistering">
+          <b-form-group label="Полное имя" label-for="fullName">
+            <b-form-input
+                id="fullName"
+                v-model="fullName"
+                placeholder="Введите полное имя"
+                required
+                :state="isValidFullName(fullName)"
+                aria-describedby="fullName-feedback"
+                class="custom-input"
+            ></b-form-input>
+            <b-form-invalid-feedback id="fullName-feedback">
+              Пожалуйста, введите корректное ФИО (например, Иванов Иван Иванович).
+            </b-form-invalid-feedback>
+          </b-form-group>
+
+          <b-form-group label="Номер телефона" label-for="phone">
+            <b-form-input
+                id="phone"
+                v-model="phone"
+                placeholder="7(999) 999-99-99"
+                required
+                v-mask="'7(###) ###-####'"
+                :state="isValidPhone(phone)"
+                aria-describedby="phone-feedback"
+                class="custom-input"
+            ></b-form-input>
+            <b-form-invalid-feedback id="phone-feedback">
+              Номер телефона должен начинаться с 7 и содержать 11 цифр.
+            </b-form-invalid-feedback>
+          </b-form-group>
+
+          <b-form-group label="Электронная почта" label-for="email">
+            <b-form-input
+                type="email"
+                id="email"
+                v-model="filters.email"
+                placeholder="example@mail.com"
+                required
+                :state="isValidEmail(filters.email)"
+                aria-describedby="email-feedback"
+                class="custom-input"
+            ></b-form-input>
+            <b-form-invalid-feedback id="email-feedback">
+              Пожалуйста, введите корректный email.
+            </b-form-invalid-feedback>
+          </b-form-group>
+        </div>
+
+        <!-- Форма входа -->
+        <div v-else>
+          <b-form-group label="Номер телефона" label-for="phone">
+            <b-form-input
+                id="phone"
+                v-model="phone"
+                placeholder="7(999) 999-99-99"
+                required
+                v-mask="'7(###) ###-####'"
+                :state="isValidPhone(phone)"
+                aria-describedby="phone-feedback"
+                class="custom-input"
+            ></b-form-input>
+            <b-form-invalid-feedback id="phone-feedback">
+              Номер телефона должен начинаться с 7 и содержать 11 цифр.
+            </b-form-invalid-feedback>
+          </b-form-group>
+
+          <b-form-group label="Пароль" label-for="password">
+            <b-form-input
+                type="password"
+                id="password"
+                v-model="password"
+                placeholder="Введите пароль"
+                required
+                class="custom-input"
+            ></b-form-input>
+            <!-- Без валидации пароля, поэтому нет feedback -->
+          </b-form-group>
+        </div>
+
+        <b-button type="submit" variant="danger" class="w-100 custom-btn">
+          {{ isRegistering ? 'Зарегистрироваться' : 'Войти' }}
+        </b-button>
+
+        <p v-if="errorMessage" class="error text-danger mt-2">{{ errorMessage }}</p>
+      </b-form>
+
+      <div class="toggle-section mt-3 text-center">
+        <span>{{ isRegistering ? 'Уже есть аккаунт?' : 'Нет аккаунта?' }}</span>
+        <b-button variant="link" class="btn-toggle p-0" @click="toggleForm">
+          {{ isRegistering ? 'Войти' : 'Зарегистрироваться' }}
+        </b-button>
       </div>
-
-      <!-- Форма входа -->
-      <div v-else>
-        <input
-            type="tel"
-            v-model="phone"
-            placeholder="Номер телефона"
-            required
-            v-mask="'7(###) ###-####'"
-            :class="{'invalid': !isValidPhone(phone)}"
-        />
-        <input
-            type="password"
-            v-model="password"
-            placeholder="Пароль"
-            required
-        />
-      </div>
-
-      <button type="submit" class="btn">
-        {{ isRegistering ? 'Зарегистрироваться' : 'Войти' }}
-      </button>
-
-      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-    </form>
-
-    <div class="toggle-section">
-      <span>{{ isRegistering ? 'Уже есть аккаунт?' : 'Нет аккаунта?' }}</span>
-      <button @click="toggleForm" class="btn-toggle">
-        {{ isRegistering ? 'Войти' : 'Зарегистрироваться' }}
-      </button>
-    </div>
+    </b-card>
   </div>
 </template>
 
 <script>
-import { ref } from 'vue';
-
 export default {
-  name: 'Home',
+  name: 'Auth',
   data() {
     return {
       isRegistering: false,  // Флаг для переключения между входом и регистрацией
@@ -110,6 +148,12 @@ export default {
         return;
       }
 
+      // Поскольку валидация пароля отключена, можно добавить базовую проверку на наличие пароля
+      if (!this.password) {
+        this.errorMessage = 'Пожалуйста, введите пароль.';
+        return;
+      }
+
       try {
         const response = await fetch('http://localhost:8080/api/login', {
           method: 'POST',
@@ -131,7 +175,15 @@ export default {
         const data = await response.json();
         const role = data.role;
 
-        alert('Авторизация прошла успешно!');
+        this.$swal.fire({
+          title: 'Успех!',
+          text: 'Авторизация прошла успешно!',
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
 
         if (role === 'admin') {
           this.$router.push({ name: 'AdminHome' });
@@ -144,6 +196,15 @@ export default {
         }
       } catch (error) {
         this.errorMessage = error.message || 'Ошибка входа. Проверьте данные и попробуйте снова.';
+        this.$swal.fire({
+          title: 'Ошибка!',
+          text: this.errorMessage,
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
         console.error(error);
       }
     },
@@ -174,11 +235,28 @@ export default {
         }
 
         const data = await response.json();
-        alert('Регистрация прошла успешно! Теперь вы можете войти в систему.');
+        this.$swal.fire({
+          title: 'Успех!',
+          text: 'Регистрация прошла успешно! Теперь вы можете войти в систему.',
+          icon: 'success',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
         this.resetForm();
         this.isRegistering = false;  // Переключаемся на форму входа
       } catch (error) {
         this.errorMessage = error.message || 'Ошибка регистрации. Попробуйте снова.';
+        this.$swal.fire({
+          title: 'Ошибка!',
+          text: this.errorMessage,
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
         console.error(error);
       }
     },
@@ -200,94 +278,60 @@ export default {
 </script>
 
 <style scoped>
-body {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-size: cover;
-  background-position: center;
-  font-family: 'Arial', sans-serif;
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+.d-flex {
+  font-family: 'Roboto', sans-serif;
 }
 
-.auth-container {
-  background: rgba(255, 255, 255, 0.85);
-  padding: 40px 30px;
+.auth-card {
+  border: none;
+  background: #ffffff;
   border-radius: 15px;
-  box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.3);
-  width: 360px;
-  text-align: center;
 }
 
 h2 {
-  margin-bottom: 30px;
-  color: #333;
-  font-size: 1.8em;
-  font-weight: bold;
+  color: #343a40;
+  font-weight: 500;
 }
 
-input {
-  width: 90%;
-  padding: 15px;
-  margin: 10px 0;
-  border: 2px solid #ccc;
-  border-radius: 8px;
-  font-size: 1em;
-  transition: border-color 0.3s;
-}
-
-input:focus {
-  border-color: #ff6b6b;
-}
-
-.btn {
+.custom-btn {
   background-color: #ff6b6b;
   color: white;
   border: none;
-  padding: 15px;
+  padding: 12px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 1.1em;
-  width: 100%;
   transition: background-color 0.3s;
-  margin-top: 15px;
 }
 
-.btn:hover {
+.custom-btn:hover {
   background-color: #ff4d4d;
 }
 
-.btn-toggle {
-  background-color: transparent;
+.custom-toggle-btn {
   color: #ff6b6b;
-  border: none;
-  cursor: pointer;
-  font-size: 1em;
-
   text-decoration: underline;
 }
 
-.btn-toggle:hover {
+.custom-toggle-btn:hover {
   color: #ff4d4d;
 }
 
-.error {
-  color: red;
-  font-size: 0.9em;
-  margin-top: 10px;
+.custom-input {
+  font-family: 'Roboto', sans-serif;
 }
 
-.toggle-section {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.invalid {
+  border-color: #dc3545 !important;
+}
+
+.error {
+  font-size: 0.9em;
 }
 
 .toggle-section span {
-  margin-right: 10px;
   color: #555;
 }
 </style>

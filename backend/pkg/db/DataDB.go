@@ -14,10 +14,11 @@ type Client struct {
 type Order struct {
 	OrderID     int       `gorm:"column:order_id;primaryKey" json:"id"`
 	ClientID    int       `gorm:"column:client_id" json:"clientId"`
-	EmployeeID  int       `gorm:"column:employee_id" json:"employeeId"`
+	EmployeeID  int       `gorm:"column:employee_id;" json:"employeeId"`
 	ServiceName string    `gorm:"column:service_name" json:"service"`
 	OrderDate   time.Time `gorm:"column:order_date" json:"orderDate"`
 	ReceiptDate time.Time `gorm:"column:receipt_date" json:"receiveDate"`
+	IssueDate   time.Time `gorm:"column:issue_date" json:"issueDate"`
 }
 
 type Employee struct {
@@ -41,7 +42,6 @@ type Service struct {
 type Booking struct {
 	BookingID      int       `gorm:"column:booking_id;primaryKey;autoIncrement" json:"id"`
 	BookingType    string    `gorm:"column:booking_type;not null" json:"booking_type"`
-	OrderID        int       `gorm:"column:order_id;not null;autoIncrement" json:"order_id"`
 	BookingTime    time.Time `gorm:"column:booking_time;not null" json:"booking_time"`
 	BookerFullName string    `gorm:"column:booker_full_name;not null" json:"booker_full_name"`
 	ClientID       int       `gorm:"column:client_id;" json:"client_id"`

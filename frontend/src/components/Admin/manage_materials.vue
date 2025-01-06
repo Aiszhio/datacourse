@@ -30,7 +30,8 @@
         <thead>
         <tr>
           <th>Название материала</th>
-          <th @click="sortExpenditures">Дата расхода
+          <th @click="sortExpenditures" style="cursor: pointer;">
+            Дата расхода
             <span v-if="sortExpenditureDirection === 'asc'">▲</span>
             <span v-else>▼</span>
           </th>
@@ -46,57 +47,82 @@
         </tbody>
       </table>
       <div class="pagination" v-if="maxPages(expenditures) > 1">
-        <button @click="changeExpendituresPage(expendituresPage - 1)" :disabled="expendituresPage <= 1">Назад</button>
+        <button @click="changeExpendituresPage(expendituresPage - 1)" :disabled="expendituresPage <= 1" class="btn">
+          Назад
+        </button>
         <span>Страница {{ expendituresPage }} из {{ maxPages(expenditures) }}</span>
-        <button @click="changeExpendituresPage(expendituresPage + 1)" :disabled="expendituresPage >= maxPages(expenditures)">Вперёд</button>
+        <button @click="changeExpendituresPage(expendituresPage + 1)" :disabled="expendituresPage >= maxPages(expenditures)" class="btn">
+          Вперёд
+        </button>
       </div>
     </div>
 
-    <!-- Модальное окно для добавления расхода -->
-    <div v-if="showExpenditureModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Добавить расход материала</h3>
-
+    <!-- Модальное окно для добавления расхода (используя b-modal) -->
+    <b-modal
+        id="expenditure-modal"
+        v-model="showExpenditureModal"
+        title="Добавить расход материала"
+        hide-footer
+        @hide="resetExpenditureForm"
+    >
+      <form @submit.prevent="saveExpenditure">
         <!-- Поле для выбора материала -->
-        <label for="expenditureMaterialName">Название материала</label>
-        <select id="expenditureMaterialName" v-model="currentExpenditure.material_id" class="input" required>
-          <option value="" disabled>Выберите материал</option>
-          <option v-for="material in materials" :key="material.material_id" :value="material.material_id">
-            {{ material.material_name }}
-          </option>
-        </select>
+        <div class="mb-3">
+          <label for="expenditureMaterialName" class="form-label">Название материала</label>
+          <select
+              id="expenditureMaterialName"
+              v-model="currentExpenditure.material_id"
+              class="form-select"
+              required
+          >
+            <option value="" disabled>Выберите материал</option>
+            <option
+                v-for="material in materials"
+                :key="material.material_id"
+                :value="material.material_id"
+            >
+              {{ material.material_name }}
+            </option>
+          </select>
+        </div>
 
         <!-- Поле для ввода количества -->
-        <label for="expenditureQuantity">Количество</label>
-        <div class="quantity-container">
-          <input
-              id="expenditureQuantity"
-              type="number"
-              v-model="currentExpenditure.quantity"
-              class="input"
-              placeholder="Количество"
-              min="1"
-              max="999"
-              required
-          />
-          <span class="unit">шт</span>
+        <div class="mb-3">
+          <label for="expenditureQuantity" class="form-label">Количество</label>
+          <div class="input-group">
+            <input
+                id="expenditureQuantity"
+                type="number"
+                v-model="currentExpenditure.quantity"
+                class="form-control"
+                placeholder="Количество"
+                min="1"
+                max="999"
+                required
+            />
+            <span class="input-group-text">шт</span>
+          </div>
         </div>
 
         <!-- Поле для ввода даты расхода -->
-        <label for="expenditureDate">Дата расхода</label>
-        <input
-            id="expenditureDate"
-            type="datetime-local"
-            v-model="currentExpenditure.expenditure_date"
-            :max="todayDate"
-            class="input"
-            required
-        />
+        <div class="mb-3">
+          <label for="expenditureDate" class="form-label">Дата расхода</label>
+          <input
+              id="expenditureDate"
+              type="datetime-local"
+              v-model="currentExpenditure.expenditure_date"
+              :max="todayDate"
+              class="form-control"
+              required
+          />
+        </div>
 
-        <button @click="saveExpenditure" class="btn">Сохранить</button>
-        <button @click="closeExpenditureModal" class="btn danger">Отмена</button>
-      </div>
-    </div>
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+          <button type="button" @click="closeExpenditureModal" class="btn btn-danger">Отмена</button>
+        </div>
+      </form>
+    </b-modal>
 
     <!-- Таблица закупок материалов -->
     <div class="purchases-section">
@@ -109,7 +135,8 @@
           <th>Стоимость</th>
           <th>Поставщик</th>
           <th>Количество</th>
-          <th @click="sortPurchases">Дата поставки
+          <th @click="sortPurchases" style="cursor: pointer;">
+            Дата поставки
             <span v-if="sortPurchaseDirection === 'asc'">▲</span>
             <span v-else>▼</span>
           </th>
@@ -126,85 +153,115 @@
         </tbody>
       </table>
       <div class="pagination" v-if="maxPages(purchases) > 1">
-        <button @click="changePurchasesPage(purchasesPage - 1)" :disabled="purchasesPage <= 1">Назад</button>
+        <button @click="changePurchasesPage(purchasesPage - 1)" :disabled="purchasesPage <= 1" class="btn">
+          Назад
+        </button>
         <span>Страница {{ purchasesPage }} из {{ maxPages(purchases) }}</span>
-        <button @click="changePurchasesPage(purchasesPage + 1)" :disabled="purchasesPage >= maxPages(purchases)">Вперёд</button>
+        <button @click="changePurchasesPage(purchasesPage + 1)" :disabled="purchasesPage >= maxPages(purchases)" class="btn">
+          Вперёд
+        </button>
       </div>
     </div>
 
-    <!-- Модальное окно для добавления закупки -->
-    <div v-if="showPurchaseModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Добавить закупку материала</h3>
-
+    <!-- Модальное окно для добавления закупки (используя b-modal) -->
+    <b-modal
+        id="purchase-modal"
+        v-model="showPurchaseModal"
+        title="Добавить закупку материала"
+        hide-footer
+        @hide="resetPurchaseForm"
+    >
+      <form @submit.prevent="savePurchase">
         <!-- Поле для выбора материала -->
-        <label for="purchaseMaterialName">Название материала</label>
-        <select id="purchaseMaterialName" v-model="currentPurchase.material_id" class="input" required>
-          <option value="" disabled>Выберите материал</option>
-          <option v-for="material in materials" :key="material.material_id" :value="material.material_id">
-            {{ material.material_name }}
-          </option>
-        </select>
+        <div class="mb-3">
+          <label for="purchaseMaterialName" class="form-label">Название материала</label>
+          <select
+              id="purchaseMaterialName"
+              v-model="currentPurchase.material_id"
+              class="form-select"
+              required
+          >
+            <option value="" disabled>Выберите материал</option>
+            <option
+                v-for="material in materials"
+                :key="material.material_id"
+                :value="material.material_id"
+            >
+              {{ material.material_name }}
+            </option>
+          </select>
+        </div>
 
         <!-- Поле для ввода поставщика (обязательное) -->
-        <label for="purchaseSupplier">Поставщик</label>
-        <input
-            id="purchaseSupplier"
-            type="text"
-            v-model="currentPurchase.supplier"
-            class="input"
-            placeholder="Введите поставщика"
-            required
-            maxlength="40"
-        />
+        <div class="mb-3">
+          <label for="purchaseSupplier" class="form-label">Поставщик</label>
+          <input
+              id="purchaseSupplier"
+              type="text"
+              v-model="currentPurchase.supplier"
+              class="form-control"
+              placeholder="Введите поставщика"
+              required
+              maxlength="40"
+          />
+        </div>
 
         <!-- Поле для ввода количества -->
-        <label for="purchaseQuantity">Количество</label>
-        <div class="quantity-container">
-          <input
-              id="purchaseQuantity"
-              type="number"
-              v-model="currentPurchase.quantity"
-              class="input"
-              placeholder="Количество"
-              min="1"
-              max="999"
-              required
-          />
-          <span class="unit">шт</span>
+        <div class="mb-3">
+          <label for="purchaseQuantity" class="form-label">Количество</label>
+          <div class="input-group">
+            <input
+                id="purchaseQuantity"
+                type="number"
+                v-model="currentPurchase.quantity"
+                class="form-control"
+                placeholder="Количество"
+                min="1"
+                max="999"
+                required
+            />
+            <span class="input-group-text">шт</span>
+          </div>
         </div>
 
         <!-- Поле для ввода цены -->
-        <label for="purchaseCost">Цена</label>
-        <div class="quantity-container">
-          <input
-              id="purchaseCost"
-              type="number"
-              v-model="currentPurchase.cost"
-              class="input"
-              placeholder="Цена"
-              min="0"
-              required
-          />
-          <span class="unit">руб</span>
+        <div class="mb-3">
+          <label for="purchaseCost" class="form-label">Цена</label>
+          <div class="input-group">
+            <input
+                id="purchaseCost"
+                type="number"
+                v-model="currentPurchase.cost"
+                class="form-control"
+                placeholder="Цена"
+                min="0"
+                step="0.01"
+                required
+            />
+            <span class="input-group-text">руб</span>
+          </div>
         </div>
 
         <!-- Поле для ввода даты поставки (текущее время, без будущего) -->
-        <label for="supplyDate">Дата поставки</label>
-        <input
-            id="supplyDate"
-            type="datetime-local"
-            v-model="currentPurchase.supply_date"
-            :min="threeDaysAgo"
-            :max="todayDate"
-            class="input"
-            required
-        />
+        <div class="mb-3">
+          <label for="supplyDate" class="form-label">Дата поставки</label>
+          <input
+              id="supplyDate"
+              type="datetime-local"
+              v-model="currentPurchase.supply_date"
+              :min="threeDaysAgo"
+              :max="todayDate"
+              class="form-control"
+              required
+          />
+        </div>
 
-        <button @click="savePurchase" class="btn">Сохранить</button>
-        <button @click="closePurchaseModal" class="btn danger">Отмена</button>
-      </div>
-    </div>
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary me-2">Сохранить</button>
+          <button type="button" @click="closePurchaseModal" class="btn btn-danger">Отмена</button>
+        </div>
+      </form>
+    </b-modal>
 
     <!-- Панель навигации с карточками -->
     <div class="card-panel">
@@ -239,6 +296,9 @@
 
 <script>
 import axios from 'axios';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ru';
+dayjs.locale('ru'); // Устанавливаем русскую локаль
 
 export default {
   name: 'MaterialsOverview',
@@ -256,8 +316,8 @@ export default {
       pageSize: 10,
       sortExpenditureDirection: 'asc',
       sortPurchaseDirection: 'asc',
-      todayDate: this.getTodayDate(),
-      threeDaysAgo: this.getThreeDaysAgo(),
+      todayDate: '',
+      threeDaysAgo: '',
     };
   },
   computed: {
@@ -295,7 +355,7 @@ export default {
         console.log('Материалы успешно загружены:', this.materials);
       } catch (error) {
         console.error('Ошибка при загрузке материалов:', error);
-        alert('Не удалось загрузить материалы.');
+        this.showAlert('Не удалось загрузить материалы.', 'error');
       }
     },
 
@@ -306,7 +366,7 @@ export default {
         console.log('Расходы успешно загружены:', this.expenditures);
       } catch (error) {
         console.error('Ошибка при загрузке расходов:', error);
-        alert('Не удалось загрузить расходы.');
+        this.showAlert('Не удалось загрузить расходы.', 'error');
       }
     },
 
@@ -317,7 +377,7 @@ export default {
         console.log('Закупки успешно загружены:', this.purchases);
       } catch (error) {
         console.error('Ошибка при загрузке закупок:', error);
-        alert('Не удалось загрузить закупки.');
+        this.showAlert('Не удалось загрузить закупки.', 'error');
       }
     },
 
@@ -325,7 +385,6 @@ export default {
       this.showExpenditureModal = true;
       this.currentExpenditure = {
         material_id: '',
-        // Устанавливаем текущую дату и время по умолчанию
         expenditure_date: this.todayDate,
         quantity: '',
       };
@@ -342,7 +401,6 @@ export default {
         supplier: '',
         quantity: '',
         cost: '',
-        // Устанавливаем текущую дату и время по умолчанию
         supply_date: this.todayDate,
       };
     },
@@ -362,10 +420,10 @@ export default {
 
         if (response.data.message) {
           console.log('Сообщение с сервера:', response.data.message);
-          alert(`${response.data.message}`);
+          this.showAlert(`${response.data.message}`, 'success');
         } else {
           console.log('Ответ от сервера без сообщения:', response.data);
-          alert('Расход успешно добавлен, но нет сообщения от сервера.');
+          this.showAlert('Расход успешно добавлен, но нет сообщения от сервера.', 'info');
         }
 
         this.closeExpenditureModal();
@@ -375,13 +433,13 @@ export default {
         if (error.response) {
           const errorMessage = error.response.data.error || 'Неизвестная ошибка с сервера';
           console.error('Ошибка при сохранении расхода:', errorMessage);
-          alert(`Ошибка: ${errorMessage}`);
+          this.showAlert(`Ошибка: ${errorMessage}`, 'error');
         } else if (error.request) {
           console.error('Ошибка при сохранении расхода: нет ответа от сервера');
-          alert('Ошибка: нет ответа от сервера');
+          this.showAlert('Ошибка: нет ответа от сервера', 'error');
         } else {
           console.error('Ошибка при настройке запроса:', error.message);
-          alert(`Ошибка: ${error.message}`);
+          this.showAlert(`Ошибка: ${error.message}`, 'error');
         }
       }
     },
@@ -389,12 +447,12 @@ export default {
     async savePurchase() {
       try {
         if (isNaN(this.currentPurchase.cost) || this.currentPurchase.cost <= 0) {
-          alert('Введите правильную цену для закупки!');
+          this.showAlert('Введите правильную цену для закупки!', 'warning');
           return;
         }
 
         if (!this.currentPurchase.supplier || this.currentPurchase.supplier.trim() === '') {
-          alert('Введите имя поставщика!');
+          this.showAlert('Введите имя поставщика!', 'warning');
           return;
         }
 
@@ -407,10 +465,10 @@ export default {
 
         if (response.data.message) {
           console.log('Сообщение с сервера:', response.data.message);
-          alert(`${response.data.message}`);
+          this.showAlert(`${response.data.message}`, 'success');
         } else {
           console.log('Ответ от сервера без сообщения:', response.data);
-          alert('Закупка успешно добавлена, но нет сообщения от сервера.');
+          this.showAlert('Закупка успешно добавлена, но нет сообщения от сервера.', 'info');
         }
 
         this.closePurchaseModal();
@@ -420,25 +478,19 @@ export default {
         if (error.response) {
           const errorMessage = error.response.data.error || 'Неизвестная ошибка с сервера';
           console.error('Ошибка при сохранении закупки:', errorMessage);
-          alert(`Ошибка: ${errorMessage}`);
+          this.showAlert(`Ошибка: ${errorMessage}`, 'error');
         } else if (error.request) {
           console.error('Ошибка при сохранении закупки: нет ответа от сервера');
-          alert('Ошибка: нет ответа от сервера');
+          this.showAlert('Ошибка: нет ответа от сервера', 'error');
         } else {
           console.error('Ошибка при настройке запроса:', error.message);
-          alert(`Ошибка: ${error.message}`);
+          this.showAlert(`Ошибка: ${error.message}`, 'error');
         }
       }
     },
 
     formatDate(dateString) {
-      const date = new Date(dateString);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${day}-${month}-${year} ${hours}:${minutes}`;
+      return dayjs(dateString).format('DD-MM-YYYY HH:mm');
     },
 
     changeExpendituresPage(newPage) {
@@ -466,24 +518,11 @@ export default {
     },
 
     getTodayDate() {
-      const date = new Date();
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
+      return dayjs().format('YYYY-MM-DDTHH:mm');
     },
 
     getThreeDaysAgo() {
-      const date = new Date();
-      date.setDate(date.getDate() - 3);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${year}-${month}-${day}T${hours}:${minutes}`;
+      return dayjs().subtract(3, 'day').format('YYYY-MM-DDTHH:mm');
     },
 
     getUnit(materialName) {
@@ -502,26 +541,58 @@ export default {
       return units[materialName] || '';
     },
 
+    showAlert(message, type) {
+      // Используем SweetAlert2 для уведомлений
+      this.$swal.fire({
+        title:
+            type === 'error'
+                ? 'Ошибка!'
+                : type === 'success'
+                    ? 'Успех!'
+                    : type === 'warning'
+                        ? 'Предупреждение!'
+                        : 'Внимание!',
+        text: message,
+        icon: type,
+        timer: 3000,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end',
+      });
+    },
+
     goToAdminHome() {
-      this.$router.push({ name: 'AdminHome' });
+      this.$router.push({name: 'AdminHome'});
     },
     goToOrderHistory() {
-      this.$router.push({ name: 'OrderHistory' });
+      this.$router.push({name: 'OrderHistory'});
     },
     goToEmployeesPage() {
-      this.$router.push({ name: 'ManageEmp' });
+      this.$router.push({name: 'ManageEmp'});
     },
     goToBookingsPage() {
-      this.$router.push({ name: 'Bookings' });
+      this.$router.push({name: 'Bookings'});
     },
     goToServicesPage() {
-      this.$router.push({ name: 'Services' });
+      this.$router.push({name: 'Services'});
     },
-    goToClients(){
-      this.$router.push({ name: 'Clients' })
+    goToClients() {
+      this.$router.push({name: 'Clients'});
+    },
+
+    resetExpenditureForm() {
+      this.currentExpenditure = {};
+      this.expendituresPage = 1;
+    },
+
+    resetPurchaseForm() {
+      this.currentPurchase = {};
+      this.purchasesPage = 1;
     },
   },
   created() {
+    this.todayDate = this.getTodayDate();
+    this.threeDaysAgo = this.getThreeDaysAgo();
     this.fetchMaterials();
     this.fetchExpenditures();
     this.fetchPurchases();
@@ -533,7 +604,6 @@ export default {
 .materials-overview {
   padding: 20px;
   max-width: 1500px;
-  max-height: 100vh;
   margin: 0 auto;
 }
 
@@ -569,59 +639,9 @@ label {
   margin-top: 10px;
 }
 
-.input {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  box-sizing: border-box;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  max-width: 400px;
-  width: 100%;
-}
-
-.card-panel {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.card {
-  background-color: #4CAF50;
-  border-radius: 10px;
-  padding: 10px;
-  margin-bottom: 5px;
-  width: 180px;
+.input-group-text {
+  width: 50px;
   text-align: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  color: white;
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 .btn {
@@ -638,11 +658,11 @@ label {
   background-color: #45a049;
 }
 
-.btn.danger {
+.btn-danger {
   background-color: #f44336;
 }
 
-.btn.danger:hover {
+.btn-danger:hover {
   background-color: #d32f2f;
 }
 
@@ -665,17 +685,43 @@ label {
 .pagination button:disabled {
   background-color: #ccc;
 }
-.quantity-container {
+
+.card-panel {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.card {
+  background-color: #4CAF50;
+  border-radius: 10px;
+  padding: 10px;
+  width: 180px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  color: white;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.input-group {
   display: flex;
   align-items: center;
 }
 
-.quantity-container input {
-  margin-right: 5px;
-  width: 80px;
+.unit {
+  font-size: 14px;
 }
 
-.quantity-container .unit {
-  font-size: 14px;
+.form-label {
+  font-weight: bold;
+  margin-bottom: 5px;
 }
 </style>

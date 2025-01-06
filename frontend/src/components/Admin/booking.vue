@@ -35,7 +35,7 @@
     <!-- Таблица с бронированиями -->
     <div class="table-section">
       <h3>Брони</h3>
-      <button @click="openCreateBookingModal" class="btn">Создать бронь</button>
+      <button @click="openCreateBookingModal" class="btn add">Создать бронь</button>
       <table class="data-table">
         <thead>
         <tr>
@@ -70,7 +70,7 @@
           <td>
             <button
                 v-if="isUpcoming(booking.booking_time)"
-                @click="deleteBooking(booking.id)"
+                @click="confirmDeleteBooking(booking.id)"
                 class="btn delete"
             >
               Удалить
@@ -130,72 +130,75 @@
     </div>
 
     <!-- Модальное окно для создания бронирования -->
-    <div v-if="showCreateModal" class="modal-overlay">
-      <div class="modal">
-        <h3>Создать бронь</h3>
-        <form @submit.prevent="createBooking">
-          <label>
-            Тип брони:
-            <select v-model="newBooking.type" required>
-              <option disabled value="">Выберите тип брони</option>
-              <option>Онлайн</option>
-              <option>Очный</option>
-            </select>
-          </label>
-          <label>
-            Время брони:
-            <input
-                type="datetime-local"
-                v-model="newBooking.time"
-                :min="minBookingTime"
-                required
-            />
-          </label>
-          <label>
-            ФИО бронирующего:
-            <input
-                type="text"
-                v-model="newBooking.name"
-                required
-                maxlength="80"
-                placeholder="Введите ФИО"
-            />
-          </label>
-          <label>
-            Номер телефона бронирующего:
-            <input
-                type="text"
-                v-model="newBooking.phone"
-                class="filter-input"
-                maxlength="11"
-                @input="formatPhone"
-                required
-            />
-          </label>
-          <div class="modal-actions">
-            <button type="submit" class="btn save">Создать</button>
-            <button type="button" @click="closeCreateModal" class="btn cancel">Отмена</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <b-modal
+        id="create-booking-modal"
+        v-model="showCreateModal"
+        title="Создать бронь"
+        hide-footer
+        @hide="resetCreateBookingForm"
+    >
+      <form @submit.prevent="createBooking">
+        <div class="mb-3">
+          <label for="bookingType" class="form-label">Тип брони:</label>
+          <select
+              id="bookingType"
+              v-model="newBooking.type"
+              class="form-select"
+              required
+          >
+            <option disabled value="">Выберите тип брони</option>
+            <option>Онлайн</option>
+            <option>Очный</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="bookingTime" class="form-label">Время брони:</label>
+          <input
+              id="bookingTime"
+              type="datetime-local"
+              v-model="newBooking.time"
+              :min="minBookingTime"
+              class="form-control"
+              required
+          />
+        </div>
+        <div class="mb-3">
+          <label for="bookerPhone" class="form-label">Номер телефона бронирующего:</label>
+          <input
+              id="bookerPhone"
+              type="text"
+              v-model="newBooking.phone"
+              class="form-control"
+              placeholder="Введите номер телефона"
+              maxlength="11"
+              @input="formatPhone"
+              required
+          />
+        </div>
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary me-2">Создать</button>
+          <button type="button" @click="closeCreateModal" class="btn btn-secondary">Отмена</button>
+        </div>
+      </form>
+    </b-modal>
   </div>
 </template>
 
 <script>
 import axios from 'axios'; // Убедитесь, что axios настроен правильно
+import Swal from 'sweetalert2'; // Импортируем SweetAlert2
 
 export default {
   name: 'Bookings',
   data() {
     return {
       bookings: [], // Массив для загрузки бронирований
-      showCreateModal: false,
+      showCreateModal: false, // Модальное окно для создания бронирования
       newBooking: {
         type: '',
         time: '',
         name: '',
-        phone: '' // Добавляем поле phone
+        phone: ''
       },
       sortOrders: {
         booking_type: 'asc',
@@ -211,10 +214,8 @@ export default {
       filters: {
         type: '',
         name: '',
-        date: '',
-        phone: '' // Переносим phone сюда только если он нужен для фильтрации
+        date: ''
       },
-      todayDate: this.getTodayDate(),
       minBookingTime: '' // Добавляем minBookingTime
     };
   },
@@ -270,7 +271,15 @@ export default {
         this.calculateTotalPages();
       } catch (error) {
         console.error('Ошибка при загрузке бронирований:', error);
-        alert('Не удалось загрузить бронирования.');
+        Swal.fire({
+          title: 'Ошибка!',
+          text: 'Не удалось загрузить бронирования.',
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
       }
     },
     formatDate(dateString) {
@@ -286,15 +295,45 @@ export default {
     isUpcoming(bookingTime) {
       return new Date(bookingTime) > new Date();
     },
-    async deleteBooking(bookingId) {
-      if (!confirm(`Вы уверены, что хотите удалить бронь #${bookingId}?`)) {
-        return;
+    async confirmDeleteBooking(bookingId) {
+      const result = await Swal.fire({
+        title: 'Вы уверены?',
+        text: `Вы хотите удалить бронь #${bookingId}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Да, удалить',
+        cancelButtonText: 'Отмена',
+        reverseButtons: true,
+      });
+
+      if (result.isConfirmed) {
+        await this.deleteBooking(bookingId);
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        Swal.fire({
+          title: 'Отменено',
+          text: 'Удаление бронирования отменено.',
+          icon: 'info',
+          timer: 2000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
       }
+    },
+    async deleteBooking(bookingId) {
       try {
         await axios.delete(`http://localhost:8080/api/bookings/admin/${bookingId}`, { withCredentials: true });
         // Удаляем бронирование из локального массива
         this.bookings = this.bookings.filter(b => b.id !== bookingId);
-        alert('Бронирование успешно удалено.');
+        Swal.fire({
+          title: 'Успех!',
+          text: 'Бронирование успешно удалено.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
         this.calculateTotalPages();
         // Если текущая страница пуста после удаления, перейдём на предыдущую
         if (this.paginatedBookings.length === 0 && this.currentPage > 1) {
@@ -302,7 +341,15 @@ export default {
         }
       } catch (error) {
         console.error('Ошибка при удалении бронирования:', error);
-        alert('Не удалось удалить бронирование.');
+        Swal.fire({
+          title: 'Ошибка!',
+          text: 'Не удалось удалить бронирование.',
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
       }
     },
     goToAdminHome() {
@@ -380,16 +427,41 @@ export default {
         phone: ''
       };
     },
+    resetCreateBookingForm() {
+      this.newBooking = {
+        type: '',
+        time: '',
+        name: '',
+        phone: ''
+      };
+      this.showCreateModal = false;
+    },
     async createBooking() {
       const selectedTime = new Date(this.newBooking.time);
       const now = new Date();
       if (selectedTime < now) {
-        alert('Время брони не может быть в прошлом.');
+        Swal.fire({
+          title: 'Ошибка!',
+          text: 'Время брони не может быть в прошлом.',
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
         return;
       }
 
       if (this.newBooking.name.length > 80) {
-        alert('ФИО бронирующего не может превышать 80 символов.');
+        Swal.fire({
+          title: 'Ошибка!',
+          text: 'ФИО бронирующего не может превышать 80 символов.',
+          icon: 'error',
+          timer: 3000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
         return;
       }
 
@@ -407,14 +479,38 @@ export default {
           this.calculateTotalPages(); // Пересчитываем количество страниц
         }
 
-        alert('Бронирование успешно создано.');
+        Swal.fire({
+          title: 'Успех!',
+          text: 'Бронирование успешно создано.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end',
+        });
         this.closeCreateModal();
       } catch (error) {
         console.error('Ошибка при создании бронирования:', error);
         if (error.response && error.response.data && error.response.data.error) {
-          alert(`Не удалось создать бронирование: ${error.response.data.error}`);
+          Swal.fire({
+            title: 'Ошибка!',
+            text: `Не удалось создать бронирование: ${error.response.data.error}`,
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         } else {
-          alert('Не удалось создать бронирование.');
+          Swal.fire({
+            title: 'Ошибка!',
+            text: 'Не удалось создать бронирование.',
+            icon: 'error',
+            timer: 3000,
+            showConfirmButton: false,
+            toast: true,
+            position: 'top-end',
+          });
         }
       }
     },
@@ -439,7 +535,7 @@ export default {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
-    }
+    },
   },
   watch: {
     filters: {
@@ -464,7 +560,6 @@ export default {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
-  max-height: 100vh;
 }
 
 h2 {
@@ -472,24 +567,6 @@ h2 {
   width: 100%;
   margin-bottom: 20px;
   color: #333;
-}
-
-.sort-buttons .btn.sort {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.sort-buttons .btn.sort:hover {
-  background-color: #45a049;
-}
-
-.create-booking-button .btn.create {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.create-booking-button .btn.create:hover {
-  background-color: #45a049;
 }
 
 .table-section {
@@ -510,6 +587,7 @@ h2 {
 
 .data-table th {
   background-color: #f2f2f2;
+  cursor: pointer;
 }
 
 .btn {
@@ -523,13 +601,16 @@ h2 {
   transition: background-color 0.3s;
 }
 
-.btn.edit {
-  background-color: #4CAF50;
-  margin-right: 5px;
+.btn:hover {
+  background-color: #45a049;
 }
 
-.btn.edit:hover {
-  background-color: #45a049;
+.btn.add {
+  background-color: #2196F3;
+}
+
+.btn.add:hover {
+  background-color: #1976D2;
 }
 
 .btn.delete {
@@ -587,74 +668,69 @@ h2 {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.modal {
-  background-color: white;
-  padding: 25px;
-  border-radius: 8px;
-  width: 400px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.modal h3 {
-  margin-bottom: 15px;
+.form-label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
   color: #333;
 }
 
-.modal label {
-  display: block;
-  margin-bottom: 10px;
-  color: #555;
-}
-
-.modal select,
-.modal input {
+.form-control,
+.form-select {
   width: 100%;
-  padding: 8px;
-  margin-top: 5px;
-  box-sizing: border-box;
-  border: 1px solid #ccc;
+  padding: 8px 12px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
   border-radius: 4px;
+  transition: border-color 0.3s;
 }
 
-.modal-actions {
+.form-control:focus,
+.form-select:focus {
+  border-color: #4CAF50;
+  outline: none;
+}
+
+.d-flex {
   display: flex;
+}
+
+.justify-content-end {
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 15px;
 }
 
-.btn.save {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.btn.save:hover {
-  background-color: #45a049;
-}
-
-.btn.cancel {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.btn.cancel:hover {
-  background-color: #45a049;
-}
-
+/* Стили для input */
 input[type="text"],
 input[type="datetime-local"],
+input[type="date"],
+input[type="number"] {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s ease-in-out;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+input[type="text"]:focus,
+input[type="datetime-local"]:focus,
+input[type="date"]:focus,
+input[type="number"]:focus {
+  border-color: #4CAF50;
+  outline: none;
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+}
+
+input[type="text"]:hover,
+input[type="datetime-local"]:hover,
+input[type="date"]:hover,
+input[type="number"]:hover {
+  border-color: #999;
+}
+
+/* Стили для select */
 select {
   width: 100%;
   padding: 12px;
@@ -662,143 +738,46 @@ select {
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 16px;
-  transition: border-color 0.3s ease-in-out;
-}
-
-input[type="text"]:focus,
-input[type="datetime-local"]:focus,
-select:focus {
-  border-color: #007bff;
-  outline: none;
-}
-
-input[type="text"]:hover,
-input[type="datetime-local"]:hover,
-select:hover {
-  border-color: #aaa;
-}
-
-/* Стили для меток (label) */
-label {
-  font-size: 16px;
-  margin-bottom: 5px;
-  display: block;
-  font-weight: bold;
+  background-color: #fff;
   color: #333;
+  transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  appearance: none; /* Убираем стандартное оформление браузера */
 }
 
-.filter-wrapper {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
-}
-
-.filter-wrapper .filter-input {
-  width: 100%;
-  padding: 12px;
-  margin: 10px 0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 16px;
-  transition: border-color 0.3s ease-in-out;
-}
-
-.filter-wrapper .filter-input:focus {
+select:focus {
   border-color: #4CAF50;
-  outline: none;
-}
-
-.filter-wrapper .filter-input:hover {
-  border-color: #aaa;
-}
-
-.filter-wrapper .filter-select {
-  width: 100%;
-  padding: 12px;
-  margin: 10px 0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 16px;
-  transition: border-color 0.3s ease-in-out;
-}
-
-.filter-wrapper .filter-select:focus {
-  border-color: #4CAF50;
-  outline: none;
-}
-
-.filter-wrapper .filter-select:hover {
-  border-color: #aaa;
-}
-
-.filter-wrapper .btn.filter {
-  background-color: #4CAF50;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.filter-wrapper .btn.filter:hover {
-  background-color: #45a049;
-}
-
-.filter-wrapper .btn.filter:focus {
   outline: none;
   box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
 }
 
-input[type="text"],
-input[type="datetime-local"],
-select,
-input[type="date"] {
-  width: 100%;
-  padding: 12px;
-  margin: 10px 0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 16px;
-  transition: border-color 0.3s ease-in-out;
+select:hover {
+  border-color: #999;
 }
 
-input[type="text"]:focus,
-input[type="datetime-local"]:focus,
-select:focus,
-input[type="date"]:focus {
-  border-color: #007bff;
-  outline: none;
+/* Добавляем стрелочку вниз для select */
+select::-ms-expand {
+  display: none;
 }
 
-input[type="text"]:hover,
-input[type="datetime-local"]:hover,
-select:hover,
-input[type="date"]:hover {
-  border-color: #aaa;
+select::after {
+  content: '';
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent;
 }
 
-label {
-  font-size: 16px;
-  margin-bottom: 5px;
-  display: block;
-  font-weight: bold;
-  color: #333;
+/* Дополнительные стили для disabled input и select */
+input:disabled,
+select:disabled {
+  background-color: #f9f9f9;
+  border-color: #ddd;
+  color: #999;
+  cursor: not-allowed;
 }
 
-
-input[type="date"] {
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  background-color: #fff;
-}
-
-input[type="date"]:focus {
-  border-color: #4CAF50;
-}
-
-input[type="date"]:hover {
-  border-color: #aaa;
-}
 </style>

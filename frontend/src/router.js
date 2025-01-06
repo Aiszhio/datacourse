@@ -32,8 +32,9 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, from, next) => {
+    // Пропускаем проверку роли для главной страницы
     if (to.path === '/') {
-        return next(); // Пропускаем проверку роли для главной страницы
+        return next();
     }
 
     try {
@@ -43,18 +44,45 @@ router.beforeEach(async (to, from, next) => {
 
         // Логика маршрутов в зависимости от роли
         if (to.path.startsWith('/admin') && userRole !== 'admin') {
-            next({ name: 'home' });
-        } else if (to.path.startsWith('/worker') && userRole !== 'worker') {
-            next({ name: 'home' });
-        } else if (to.path.startsWith('/client') && userRole !== 'client') {
-            next({ name: 'home' });
-        } else {
-            next(); // Разрешаем доступ к маршруту
+            return next({ name: 'home' });
         }
+
+        if (to.path.startsWith('/worker') && userRole !== 'worker') {
+            return next({ name: 'home' });
+        }
+
+        if (to.path.startsWith('/client') && userRole !== 'client') {
+            return next({ name: 'home' });
+        }
+
+        // Разрешаем доступ к маршруту, если роль совпадает
+        return next();
     } catch (error) {
-        console.error('Ошибка при проверке роли:', error);
-        next({ name: 'home' }); // Перенаправляем на главную при ошибке
+        // Проверяем, есть ли ответ от сервера
+        if (error.response) {
+            const { status, data } = error.response;
+
+            if (status === 403 && data.error === 'Доступ запрещен, вы уволены') {
+                console.error('Пользователь уволен:', data.error);
+                // Перенаправляем на страницу с сообщением о запрете доступа
+                return next({ name: 'accessForbidden' });
+            }
+
+            if (data && data.error) {
+                console.error('Ошибка при проверке роли:', data.error);
+                // Можно добавить отображение уведомления пользователю, например:
+                // Notify.show(data.error);
+            } else {
+                console.error('Неизвестная ошибка при проверке роли:', error);
+            }
+        } else {
+            console.error('Ошибка при отправке запроса:', error);
+        }
+
+        // Перенаправляем на главную страницу при ошибке
+        return next({ name: 'home' });
     }
 });
+
 
 export default router;

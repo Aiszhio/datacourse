@@ -29,11 +29,15 @@ func AdminCreateBooking(db *gorm.DB) fiber.Handler {
 		}
 
 		var clientID int
+		var clientName string
 
 		if err := db.Table("clients").Where("phone_number = ?", adminBooking.PhoneNumber).Pluck("client_id", &clientID).Error; err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "Не удалось найти пользователя с таким номером телефона",
 			})
+		}
+
+		if err := db.Table("clients").Where("phone_number = ?", adminBooking.PhoneNumber).Pluck("full_name", &clientName).Error; err != nil {
 		}
 
 		if clientID == 0 {
@@ -45,9 +49,8 @@ func AdminCreateBooking(db *gorm.DB) fiber.Handler {
 		booking := db2.Booking{
 			BookingID:      adminBooking.BookingID,
 			BookingType:    adminBooking.BookingType,
-			OrderID:        adminBooking.OrderID,
 			BookingTime:    adminBooking.BookingTime,
-			BookerFullName: adminBooking.BookerFullName,
+			BookerFullName: clientName,
 			ClientID:       clientID,
 		}
 

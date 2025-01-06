@@ -16,14 +16,14 @@ type OrdersWithNames struct {
 	ServiceName  string    `json:"service"`
 	OrderDate    time.Time `json:"orderDate"`
 	ReceiptDate  time.Time `json:"receiveDate"`
+	IssueDate    time.Time `json:"issueDate"`
 }
 
 func GetAdminOrders(db *gorm.DB) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var order []database.Order
 
-		if err := db.Table("orders").Select("order_id, client_id, employee_id, service_name," +
-			"order_date, receipt_date").Find(&order).Error; err != nil {
+		if err := db.Table("orders").Find(&order).Error; err != nil {
 			fmt.Println(err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": err,
@@ -72,6 +72,7 @@ func FillOrdersData(order []database.Order, db *gorm.DB) []OrdersWithNames {
 			ServiceName:  order[i].ServiceName,
 			OrderDate:    order[i].OrderDate,
 			ReceiptDate:  order[i].ReceiptDate,
+			IssueDate:    order[i].IssueDate,
 		})
 	}
 
